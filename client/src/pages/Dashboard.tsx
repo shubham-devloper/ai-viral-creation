@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import RecentCreations from "@/components/RecentCreations";
 import { trpc } from "@/lib/trpc";
 import { Zap, TrendingUp, Sparkles, Clock } from "lucide-react";
 import { format } from "date-fns";
@@ -73,70 +74,10 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Recent Generations */}
-        <Card className="bg-slate-800/50 border-purple-500/20">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Clock className="w-5 h-5 text-purple-400" />
-              Recent Generations
-            </CardTitle>
-            <CardDescription>Your latest AI-generated content</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {generationHistory && generationHistory.length > 0 ? (
-              <div className="space-y-4">
-                {generationHistory.map((gen: any) => (
-                  <div
-                    key={gen.id}
-                    className="flex items-center justify-between p-4 bg-slate-900/50 border border-purple-500/10 rounded-lg hover:border-purple-500/30 transition"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-bold text-purple-400">
-                            {gen.type.charAt(0)}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-white font-medium truncate max-w-md">
-                            {gen.prompt.substring(0, 50)}...
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {gen.type} • {format(new Date(gen.createdAt), "MMM d, yyyy")}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 ml-4">
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-white">
-                          {gen.credits_used} credits
-                        </p>
-                        <p className="text-xs text-gray-400 capitalize">
-                          {gen.status.toLowerCase()}
-                        </p>
-                      </div>
-                      {gen.status === "COMPLETED" && (
-                        <Button size="sm" variant="outline" className="border-purple-500/20 text-purple-400 hover:bg-purple-500/10">
-                          View
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Sparkles className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400 mb-4">No generations yet</p>
-                <Button className="bg-purple-600 hover:bg-purple-700">
-                  Create Your First Generation
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Recent Creations Gallery */}
+        <div>
+          <RecentCreations />
+        </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
