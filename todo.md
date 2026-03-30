@@ -78,3 +78,15 @@
 - [ ] Setup production deployment
 - [ ] Configure custom domain
 - [ ] Final QA and bug fixes
+
+
+## Phase 3: Dashboard & User Features (In Progress)
+- [x] Build protected dashboard layout with sidebar navigation
+- [x] Create user profile/settings page
+- [x] Build credits management page with purchase history
+- [x] Build projects/generations grid page
+- [ ] Implement image generation UI and API integration
+- [ ] Implement story/blog generation UI and API integration
+- [ ] Add content moderation system for flagged prompts
+- [ ] Implement watermarking system for generated content
+- [ ] Setup Cloudflare R2 file storage integration
