@@ -10,6 +10,8 @@ import CreditsPage from "./pages/CreditsPage";
 import HistoryPage from "./pages/HistoryPage";
 import SettingsPage from "./pages/SettingsPage";
 import GenerateImage from "./pages/GenerateImage";
+import GenerateStory from "./pages/GenerateStory";
+import GenerateAvatar from "./pages/GenerateAvatar";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -20,7 +22,9 @@ function Router() {
       <Route path={"/dashboard/credits"} component={CreditsPage} />
       <Route path={"/dashboard/history"} component={HistoryPage} />
       <Route path={"/dashboard/settings"} component={SettingsPage} />
-      <Route path={"/generate/image"} component={GenerateImage} />
+      <Route path={"/dashboard/generate-image"} component={GenerateImage} />
+      <Route path={"/dashboard/generate-story"} component={GenerateStory} />
+      <Route path={"/dashboard/generate-avatar"} component={GenerateAvatar} />
       <Route path={"/pricing"} component={() => <div className="p-8 text-center">Pricing (Coming Soon)</div>} />
       <Route path={"/affiliate"} component={() => <div className="p-8 text-center">Affiliate Program (Coming Soon)</div>} />
       <Route path={"/blog"} component={() => <div className="p-8 text-center">Blog (Coming Soon)</div>} />

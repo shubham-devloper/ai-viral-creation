@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { paymentRouter } from "./payment";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
@@ -16,6 +17,7 @@ const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
 export const appRouter = router({
   system: systemRouter,
+  payment: paymentRouter,
 
   // Auth routes
   auth: router({
