@@ -90,3 +90,12 @@
 - [ ] Add content moderation system for flagged prompts
 - [ ] Implement watermarking system for generated content
 - [ ] Setup Cloudflare R2 file storage integration
+
+## Current Task: Image Generation Feature
+- [x] Build image generation page with prompt input and style options
+- [x] Implement real-time credit cost calculator
+- [x] Add quality selector (Standard/HD)
+- [x] Create generation preview and result display
+- [x] Add download and share functionality
+- [ ] Integrate with AI generation API
+- [x] Add loading states and error handling

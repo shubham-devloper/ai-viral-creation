@@ -27,10 +27,11 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-import { Zap, History, Settings } from "lucide-react";
+import { Zap, History, Settings, Sparkles as SparklesIcon } from "lucide-react";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: SparklesIcon, label: "Generate", path: "/generate/image" },
   { icon: Zap, label: "Credits", path: "/dashboard/credits" },
   { icon: History, label: "History", path: "/dashboard/history" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
