@@ -11,6 +11,11 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/dashboard"} component={() => <div className="p-8 text-center">Dashboard (Coming Soon)</div>} />
+      <Route path={"/pricing"} component={() => <div className="p-8 text-center">Pricing (Coming Soon)</div>} />
+      <Route path={"/affiliate"} component={() => <div className="p-8 text-center">Affiliate Program (Coming Soon)</div>} />
+      <Route path={"/blog"} component={() => <div className="p-8 text-center">Blog (Coming Soon)</div>} />
+      <Route path={"/policy/:type"} component={() => <div className="p-8 text-center">Policy (Coming Soon)</div>} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -27,7 +32,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider
-        defaultTheme="light"
+        defaultTheme="dark"
         // switchable
       >
         <TooltipProvider>

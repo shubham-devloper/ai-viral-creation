@@ -1,11 +1,23 @@
-import { eq } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { 
+  InsertUser, 
+  users, 
+  credits, 
+  transactions, 
+  generations, 
+  subscriptions,
+  affiliates,
+  affiliate_referrals,
+  articles,
+  policies,
+  admin_config,
+  user_api_keys
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -35,7 +47,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     };
     const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod"] as const;
+    const textFields = ["name", "email", "loginMethod", "mobile", "avatar_url", "password_hash", "google_id", "referred_by"] as const;
     type TextField = (typeof textFields)[number];
 
     const assignNullable = (field: TextField) => {
@@ -85,8 +97,299 @@ export async function getUserByOpenId(openId: string) {
   }
 
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// Credits functions
+export async function getOrCreateCredits(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  let credit = await db.select().from(credits).where(eq(credits.user_id, userId)).limit(1);
+  
+  if (credit.length === 0) {
+    await db.insert(credits).values({ user_id: userId, balance: 10 });
+    credit = await db.select().from(credits).where(eq(credits.user_id, userId)).limit(1);
+  }
+  
+  return credit[0];
+}
+
+export async function updateCredits(userId: number, amount: number, reason: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const credit = await getOrCreateCredits(userId);
+  if (!credit) return undefined;
+
+  const newBalance = Math.max(0, credit.balance + amount);
+  const totalUsed = credit.total_used ?? 0;
+  const totalPurchased = credit.total_purchased ?? 0;
+  
+  await db.update(credits)
+    .set({ 
+      balance: newBalance,
+      total_used: amount < 0 ? totalUsed + Math.abs(amount) : totalUsed,
+      total_purchased: amount > 0 ? totalPurchased + amount : totalPurchased
+    })
+    .where(eq(credits.user_id, userId));
+
+  return { ...credit, balance: newBalance, total_used: credit.total_used ?? 0, total_purchased: credit.total_purchased ?? 0 };
+}
+
+// Transactions functions
+export async function createTransaction(data: {
+  user_id: number;
+  type: "PURCHASE" | "REFUND" | "BONUS" | "AFFILIATE_BONUS";
+  credits_amount: number;
+  amount_inr?: number | null;
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
+  status?: "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
+  package_name?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const insertData = {
+    ...data,
+    amount_inr: data.amount_inr !== undefined && data.amount_inr !== null ? data.amount_inr.toString() : null
+  };
+  const result = await db.insert(transactions).values(insertData);
+  return result;
+}
+
+export async function getTransactionsByUser(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select()
+    .from(transactions)
+    .where(eq(transactions.user_id, userId))
+    .orderBy(desc(transactions.createdAt))
+    .limit(limit);
+}
+
+// Generations functions
+export async function createGeneration(data: {
+  user_id: number;
+  type: "IMAGE" | "VIDEO" | "STORY" | "AVATAR";
+  prompt: string;
+  credits_used: number;
+  quality?: "standard" | "hd";
+  output_url?: string;
+  thumbnail_url?: string;
+  metadata?: Record<string, any>;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.insert(generations).values(data);
+  return result;
+}
+
+export async function getGenerationsByUser(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select()
+    .from(generations)
+    .where(eq(generations.user_id, userId))
+    .orderBy(desc(generations.createdAt))
+    .limit(limit);
+}
+
+export async function updateGenerationStatus(generationId: number, status: "PROCESSING" | "COMPLETED" | "FAILED", outputUrl?: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const updateData: any = { status };
+  if (outputUrl) updateData.output_url = outputUrl;
+
+  await db.update(generations)
+    .set(updateData)
+    .where(eq(generations.id, generationId));
+}
+
+// Subscriptions functions
+export async function getOrCreateSubscription(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  let sub = await db.select().from(subscriptions).where(eq(subscriptions.user_id, userId)).limit(1);
+  
+  if (sub.length === 0) {
+    await db.insert(subscriptions).values({ user_id: userId, plan: "FREE" });
+    sub = await db.select().from(subscriptions).where(eq(subscriptions.user_id, userId)).limit(1);
+  }
+  
+  return sub[0];
+}
+
+// Affiliates functions
+export async function createAffiliate(userId: number, code: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.insert(affiliates).values({ user_id: userId, code });
+  return result;
+}
+
+export async function getAffiliateByCode(code: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(affiliates).where(eq(affiliates.code, code)).limit(1);
+  return result[0];
+}
+
+export async function getAffiliateByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(affiliates).where(eq(affiliates.user_id, userId)).limit(1);
+  return result[0];
+}
+
+export async function recordAffiliateReferral(affiliateId: number, referredUserId: number, purchaseAmount: number, commission: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  await db.insert(affiliate_referrals).values({
+    affiliate_id: affiliateId,
+    referred_user_id: referredUserId,
+    purchase_amount: purchaseAmount.toString(),
+    commission_inr: commission.toString()
+  });
+
+  // Update affiliate stats
+  await db.update(affiliates)
+    .set({
+      total_referrals: sql`total_referrals + 1`,
+      total_earnings: sql`total_earnings + ${commission}`,
+      pending_payout: sql`pending_payout + ${commission}`
+    })
+    .where(eq(affiliates.id, affiliateId));
+}
+
+// Articles functions
+export async function getPublishedArticles(limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select()
+    .from(articles)
+    .where(eq(articles.is_published, true))
+    .orderBy(desc(articles.createdAt))
+    .limit(limit);
+}
+
+export async function getArticleBySlug(slug: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(articles).where(eq(articles.slug, slug)).limit(1);
+  return result[0];
+}
+
+export async function createOrUpdateArticle(data: {
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string | null;
+  cover_image?: string | null;
+  is_published?: boolean;
+  seo_title?: string | null;
+  seo_desc?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const existing = await db.select().from(articles).where(eq(articles.slug, data.slug)).limit(1);
+  
+  if (existing.length > 0) {
+    await db.update(articles).set(data).where(eq(articles.slug, data.slug));
+    return existing[0];
+  } else {
+    const result = await db.insert(articles).values(data);
+    return result;
+  }
+}
+
+// Policies functions
+export async function getPolicyByType(type: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(policies).where(eq(policies.type, type)).limit(1);
+  return result[0];
+}
+
+export async function createOrUpdatePolicy(type: string, content: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const existing = await db.select().from(policies).where(eq(policies.type, type)).limit(1);
+  
+  if (existing.length > 0) {
+    await db.update(policies).set({ content }).where(eq(policies.type, type));
+    return existing[0];
+  } else {
+    const result = await db.insert(policies).values({ type, content });
+    return result;
+  }
+}
+
+// Admin Config functions
+export async function getConfig(key: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.select().from(admin_config).where(eq(admin_config.key, key)).limit(1);
+  return result[0]?.value;
+}
+
+export async function setConfig(key: string, value: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const existing = await db.select().from(admin_config).where(eq(admin_config.key, key)).limit(1);
+  
+  if (existing.length > 0) {
+    await db.update(admin_config).set({ value }).where(eq(admin_config.key, key));
+  } else {
+    await db.insert(admin_config).values({ key, value });
+  }
+}
+
+// User API Keys functions
+export async function createUserApiKey(userId: number, provider: string, keyHash: string, label?: string | null) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const result = await db.insert(user_api_keys).values({
+    user_id: userId,
+    provider,
+    key_hash: keyHash,
+    label: label || null
+  });
+  return result;
+}
+
+export async function getUserApiKeys(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select()
+    .from(user_api_keys)
+    .where(and(eq(user_api_keys.user_id, userId), eq(user_api_keys.is_active, true)))
+    .orderBy(desc(user_api_keys.createdAt));
+}
