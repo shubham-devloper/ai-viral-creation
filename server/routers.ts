@@ -42,14 +42,28 @@ export const appRouter = router({
       return { success: true } as const;
     }),
 
-    verifyAge: protectedProcedure
-      .input(z.object({ confirmed: z.boolean() }))
+    verifyAge: publicProcedure
+      .input(z.object({ birthDate: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        if (!input.confirmed) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Age verification required" });
+        // Calculate age from birth date
+        const birthDateObj = new Date(input.birthDate);
+        const today = new Date();
+        let age = today.getFullYear() - birthDateObj.getFullYear();
+        const monthDiff = today.getMonth() - birthDateObj.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
+          age--;
         }
-        // Update user's age_verified flag in database
-        // This would require an update function in db.ts
+
+        if (age < 18) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Must be at least 18 years old" });
+        }
+
+        // If user is authenticated, update their record
+        if (ctx.user) {
+          // Update user's age_verified flag in database
+          // This would require an update function in db.ts
+        }
+
         return { success: true };
       }),
   }),

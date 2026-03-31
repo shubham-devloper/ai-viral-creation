@@ -15,6 +15,11 @@ import GenerateAvatar from "./pages/GenerateAvatar";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminGenerations from "./pages/AdminGenerations";
+import AgeVerificationModal from "./components/AgeVerificationModal";
+import Pricing from "./pages/Pricing";
+import Affiliate from "./pages/Affiliate";
+import Blog from "./pages/Blog";
+import PolicyPage from "./pages/PolicyPage";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -31,10 +36,11 @@ function Router() {
       <Route path={"/admin"} component={AdminDashboard} />
       <Route path={"/admin/users"} component={AdminUsers} />
       <Route path={"/admin/generations"} component={AdminGenerations} />
-      <Route path={"/pricing"} component={() => <div className="p-8 text-center">Pricing (Coming Soon)</div>} />
-      <Route path={"/affiliate"} component={() => <div className="p-8 text-center">Affiliate Program (Coming Soon)</div>} />
-      <Route path={"/blog"} component={() => <div className="p-8 text-center">Blog (Coming Soon)</div>} />
-      <Route path={"/policy/:type"} component={() => <div className="p-8 text-center">Policy (Coming Soon)</div>} />
+      <Route path={"/pricing"} component={Pricing} />
+      <Route path={"/affiliate"} component={Affiliate} />
+      <Route path={"/blog"} component={Blog} />
+      <Route path={"/blog/:slug"} component={() => <div className="p-8 text-center">Article (Coming Soon)</div>} />
+      <Route path={"/policy/:type"} component={PolicyPage} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
