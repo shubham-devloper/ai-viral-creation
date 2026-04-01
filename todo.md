@@ -116,3 +116,45 @@
 - [x] Add plan-based restrictions - free users cannot access HD/Video generation
 - [x] Implement rate limiting - max 5 generations per minute per user
 - [x] Add LLM integration - use Manus forge API for story generation
+
+
+## REMAINING FEATURES TO IMPLEMENT
+
+### Authentication & Routing
+- [x] /login → shows Login + Sign Up tabs, both work with real email/password
+- [x] /register → same login page but starts on Sign Up tab
+- [ ] Signup → creates user in DB with 10 free credits, redirects to /dashboard
+- [x] /dashboard → redirects to /login if not logged in
+- [x] Age verification modal appears as overlay on first visit
+
+### Generation Pages
+- [x] /dashboard/generate-video → full page with upgrade banner for FREE users
+- [ ] /dashboard/generate-image → no via.placeholder.com, calls real AI
+- [ ] /dashboard/generate-avatar → no via.placeholder.com, calls real AI
+- [ ] /dashboard/history → shows real generations from DB
+- [ ] /dashboard/credits → shows real balance, working Razorpay payment
+- [ ] /dashboard/settings → saves name/mobile to DB
+- [ ] /dashboard/affiliate → shows affiliate code, stats, referrals
+
+### Admin Features
+- [ ] /admin → works only for admin role users
+- [ ] /admin/users → shows real users from DB (not mock array)
+- [ ] /admin/settings → API keys and config management
+
+### Public Pages
+- [ ] /pricing → shows ₹ INR prices, Razorpay checkout opens on Buy
+- [ ] /affiliate → public affiliate landing page
+- [ ] /blog → loads articles from DB (or empty state if none)
+
+### UI/UX Improvements
+- [ ] Sidebar has: Video and Affiliate links for users, Settings link for admin
+- [ ] All pages have proper page titles and meta descriptions
+- [ ] Remove fake via.placeholder.com images from all pages
+- [ ] AgeVerificationModal render fix
+- [ ] Real AI generation in server (not placeholder)
+- [ ] SettingsPage profile save to DB
+- [ ] AdminUsers — real DB data instead of mockUsers
+- [ ] Pricing — USD → INR + Razorpay button
+- [ ] AdminSettings page — API keys + config
+- [ ] Affiliate Dashboard for users
+- [ ] Blog page — load from DB
