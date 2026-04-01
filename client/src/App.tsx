@@ -20,22 +20,25 @@ import Pricing from "./pages/Pricing";
 import Affiliate from "./pages/Affiliate";
 import Blog from "./pages/Blog";
 import PolicyPage from "./pages/PolicyPage";
+import Login from "./pages/Login";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
-      <Route path={"/dashboard"} component={Dashboard} />
-      <Route path={"/dashboard/credits"} component={CreditsPage} />
-      <Route path={"/dashboard/history"} component={HistoryPage} />
-      <Route path={"/dashboard/settings"} component={SettingsPage} />
-      <Route path={"/dashboard/generate-image"} component={GenerateImage} />
-      <Route path={"/dashboard/generate-story"} component={GenerateStory} />
-      <Route path={"/dashboard/generate-avatar"} component={GenerateAvatar} />
-      <Route path={"/admin"} component={AdminDashboard} />
-      <Route path={"/admin/users"} component={AdminUsers} />
-      <Route path={"/admin/generations"} component={AdminGenerations} />
+      <Route path={"/login"} component={Login} />
+      <Route path={"/dashboard"} component={() => <ProtectedRoute component={Dashboard} />} />
+      <Route path={"/dashboard/credits"} component={() => <ProtectedRoute component={CreditsPage} />} />
+      <Route path={"/dashboard/history"} component={() => <ProtectedRoute component={HistoryPage} />} />
+      <Route path={"/dashboard/settings"} component={() => <ProtectedRoute component={SettingsPage} />} />
+      <Route path={"/dashboard/generate-image"} component={() => <ProtectedRoute component={GenerateImage} />} />
+      <Route path={"/dashboard/generate-story"} component={() => <ProtectedRoute component={GenerateStory} />} />
+      <Route path={"/dashboard/generate-avatar"} component={() => <ProtectedRoute component={GenerateAvatar} />} />
+      <Route path={"/admin"} component={() => <ProtectedRoute component={AdminDashboard} isAdmin />} />
+      <Route path={"/admin/users"} component={() => <ProtectedRoute component={AdminUsers} isAdmin />} />
+      <Route path={"/admin/generations"} component={() => <ProtectedRoute component={AdminGenerations} isAdmin />} />
       <Route path={"/pricing"} component={Pricing} />
       <Route path={"/affiliate"} component={Affiliate} />
       <Route path={"/blog"} component={Blog} />

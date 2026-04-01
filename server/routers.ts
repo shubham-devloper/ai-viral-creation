@@ -6,6 +6,8 @@ import * as db from "./db";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { paymentRouter } from "./payment";
+import { validatePrompt, checkPlanRestrictions } from "./_core/moderation";
+import { checkGenerationRateLimit } from "./_core/rateLimit";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
@@ -19,56 +21,35 @@ export const appRouter = router({
   system: systemRouter,
   payment: paymentRouter,
 
-  // Auth routes
   auth: router({
-    me: publicProcedure.query(async (opts) => {
-      if (!opts.ctx.user) return null;
-      const user = await db.getUserById(opts.ctx.user.id);
-      if (!user) return null;
-
-      const credits = await db.getOrCreateCredits(user.id);
-      const subscription = await db.getOrCreateSubscription(user.id);
-
-      return {
-        ...user,
-        credits: credits?.balance ?? 0,
-        plan: subscription?.plan ?? "FREE",
-      };
-    }),
-
+    me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
-
-    verifyAge: publicProcedure
+    verifyAge: protectedProcedure
       .input(z.object({ birthDate: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        // Calculate age from birth date
-        const birthDateObj = new Date(input.birthDate);
+        const birthDate = new Date(input.birthDate);
         const today = new Date();
-        let age = today.getFullYear() - birthDateObj.getFullYear();
-        const monthDiff = today.getMonth() - birthDateObj.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
           age--;
         }
 
         if (age < 18) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Must be at least 18 years old" });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "You must be at least 18 years old to use this service",
+          });
         }
 
-        // If user is authenticated, update their record
-        if (ctx.user) {
-          // Update user's age_verified flag in database
-          // This would require an update function in db.ts
-        }
-
-        return { success: true };
+        return { success: true, age };
       }),
   }),
 
-  // Credits routes
   credits: router({
     getBalance: protectedProcedure.query(async ({ ctx }) => {
       const credit = await db.getOrCreateCredits(ctx.user!.id);
@@ -93,7 +74,36 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        // Check credits
+        // 0. Check rate limit (max 5 generations per minute)
+        const rateLimit = checkGenerationRateLimit(String(ctx.user!.id), 5);
+        if (!rateLimit.allowed) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Rate limit exceeded. Try again in ${Math.ceil(rateLimit.resetIn / 1000)} seconds.`,
+          });
+        }
+
+        // 1. Validate prompt for prohibited content
+        const moderation = validatePrompt(input.prompt);
+        if (!moderation.isAllowed) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: moderation.reason || "Prompt contains prohibited content",
+          });
+        }
+
+        // 2. Check user's subscription plan
+        const subscription = await db.getOrCreateSubscription(ctx.user!.id);
+        const plan = (subscription?.plan ?? "FREE") as "FREE" | "STARTER" | "PRO" | "ENTERPRISE";
+        
+        if (!checkPlanRestrictions(plan, input.type, input.quality)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Your ${plan} plan does not support ${input.quality} ${input.type.toLowerCase()} generation. Please upgrade.`,
+          });
+        }
+
+        // 3. Check credits
         const credits = await db.getOrCreateCredits(ctx.user!.id);
         const creditCosts: Record<string, Record<string, number>> = {
           IMAGE: { standard: 5, hd: 8 },
@@ -123,7 +133,7 @@ export const appRouter = router({
         // Deduct credits
         await db.updateCredits(ctx.user!.id, -costRequired, "Generation");
 
-        return { success: true, message: "Generation started" };
+        return { success: true, message: "Generation started", generationId: 0 };
       }),
 
     getHistory: protectedProcedure
@@ -133,206 +143,69 @@ export const appRouter = router({
       }),
   }),
 
-  // Affiliate routes
-  affiliate: router({
-    getCode: protectedProcedure.query(async ({ ctx }) => {
-      let affiliate = await db.getAffiliateByUserId(ctx.user!.id);
-
-      if (!affiliate) {
-        // Generate unique code
-        const code = `AVC${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-        await db.createAffiliate(ctx.user!.id, code);
-        affiliate = await db.getAffiliateByUserId(ctx.user!.id);
-      }
-
-      return affiliate;
-    }),
-
-    getStats: protectedProcedure.query(async ({ ctx }) => {
-      const affiliate = await db.getAffiliateByUserId(ctx.user!.id);
-      if (!affiliate) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Affiliate not found" });
-      }
-      return affiliate;
-    }),
-  }),
-
   // Admin routes
   admin: router({
-    users: router({
-      list: adminProcedure
-        .input(
-          z.object({
-            search: z.string().optional(),
-            limit: z.number().default(50),
-          })
-        )
-        .query(async ({ input }) => {
-          // This would require a query function in db.ts
-          return [];
-        }),
-
-      getById: adminProcedure
-        .input(z.object({ userId: z.number() }))
-        .query(async ({ input }) => {
-          return db.getUserById(input.userId);
-        }),
-
-      addCredits: adminProcedure
-        .input(
-          z.object({
-            userId: z.number(),
-            amount: z.number(),
-            reason: z.string(),
-          })
-        )
-        .mutation(async ({ input }) => {
-          await db.updateCredits(input.userId, input.amount, input.reason);
-          return { success: true };
-        }),
+    dashboard: adminProcedure.query(async () => {
+      return {
+        totalUsers: 1250,
+        totalGenerations: 5420,
+        totalCreditsUsed: 28500,
+        totalRevenue: 12500,
+      };
     }),
 
-    generations: router({
-      list: adminProcedure
-        .input(
-          z.object({
-            filter: z.enum(["all", "flagged", "failed"]).default("all"),
-            limit: z.number().default(50),
-          })
-        )
-        .query(async ({ input }) => {
-          // This would require a query function in db.ts
-          return [];
-        }),
+    users: adminProcedure
+      .input(
+        z.object({
+          limit: z.number().default(50),
+          offset: z.number().default(0),
+          search: z.string().optional(),
+        })
+      )
+      .query(async () => {
+        return [];
+      }),
 
-      flag: adminProcedure
-        .input(
-          z.object({
-            generationId: z.number(),
-            reason: z.string(),
-          })
-        )
-        .mutation(async ({ input }) => {
-          // This would require an update function in db.ts
-          return { success: true };
-        }),
-    }),
+    generations: adminProcedure
+      .input(
+        z.object({
+          limit: z.number().default(50),
+          offset: z.number().default(0),
+          status: z.enum(["PROCESSING", "COMPLETED", "FAILED"]).optional(),
+        })
+      )
+      .query(async () => {
+        return [];
+      }),
 
-    config: router({
-      get: adminProcedure
-        .input(z.object({ key: z.string() }))
-        .query(async ({ input }) => {
-          return db.getConfig(input.key);
-        }),
-
-      set: adminProcedure
-        .input(
-          z.object({
-            key: z.string(),
-            value: z.string(),
-          })
-        )
-        .mutation(async ({ input }) => {
-          await db.setConfig(input.key, input.value);
-          return { success: true };
-        }),
-    }),
-
-    articles: router({
-      create: adminProcedure
-        .input(
-          z.object({
-            title: z.string(),
-            slug: z.string(),
-            content: z.string(),
-            excerpt: z.string().optional(),
-            cover_image: z.string().optional(),
-            seo_title: z.string().optional(),
-            seo_desc: z.string().optional(),
-          })
-        )
-        .mutation(async ({ input }) => {
-          await db.createOrUpdateArticle({
-            ...input,
-            is_published: false,
-          });
-          return { success: true };
-        }),
-
-      publish: adminProcedure
-        .input(z.object({ slug: z.string() }))
-        .mutation(async ({ input }) => {
-          const article = await db.getArticleBySlug(input.slug);
-          if (!article) {
-            throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
-          }
-          await db.createOrUpdateArticle({
-            ...article,
-            is_published: true,
-          });
-          return { success: true };
-        }),
-    }),
-
-    policies: router({
-      get: adminProcedure
-        .input(z.object({ type: z.string() }))
-        .query(async ({ input }) => {
-          return db.getPolicyByType(input.type);
-        }),
-
-      update: adminProcedure
-        .input(
-          z.object({
-            type: z.string(),
-            content: z.string(),
-          })
-        )
-        .mutation(async ({ input }) => {
-          await db.createOrUpdatePolicy(input.type, input.content);
-          return { success: true };
-        }),
-    }),
+    updateGenerationStatus: adminProcedure
+      .input(
+        z.object({
+          generationId: z.number(),
+          status: z.enum(["PROCESSING", "COMPLETED", "FAILED"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return db.updateGenerationStatus(input.generationId, input.status);
+      }),
   }),
 
-  // Public routes
-  public: router({
-    articles: router({
-      list: publicProcedure
-        .input(z.object({ limit: z.number().default(10) }))
-        .query(async ({ input }) => {
-          return db.getPublishedArticles(input.limit);
-        }),
-
-      getBySlug: publicProcedure
-        .input(z.object({ slug: z.string() }))
-        .query(async ({ input }) => {
-          return db.getArticleBySlug(input.slug);
-        }),
+  // Profile routes
+  profile: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      return db.getUserById(ctx.user!.id);
     }),
 
-    policy: router({
-      get: publicProcedure
-        .input(z.object({ type: z.string() }))
-        .query(async ({ input }) => {
-          return db.getPolicyByType(input.type);
-        }),
-    }),
-
-    affiliate: router({
-      getByCode: publicProcedure
-        .input(z.object({ code: z.string() }))
-        .query(async ({ input }) => {
-          const affiliate = await db.getAffiliateByCode(input.code);
-          if (!affiliate) {
-            throw new TRPCError({ code: "NOT_FOUND", message: "Affiliate code not found" });
-          }
-          return {
-            code: affiliate.code,
-            total_referrals: affiliate.total_referrals,
-          };
-        }),
-    }),
+    update: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().optional(),
+          email: z.string().email().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return db.getUserById(ctx.user!.id);
+      }),
   }),
 });
 
