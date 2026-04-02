@@ -137,9 +137,9 @@
 - [ ] /dashboard/affiliate → shows affiliate code, stats, referrals
 
 ### Admin Features
-- [ ] /admin → works only for admin role users
-- [ ] /admin/users → shows real users from DB (not mock array)
-- [ ] /admin/settings → API keys and config management
+- [x] /admin → works only for admin role users
+- [x] /admin/users → shows real users from DB (not mock array)
+- [x] /admin/settings → API keys and config management
 
 ### Public Pages
 - [ ] /pricing → shows ₹ INR prices, Razorpay checkout opens on Buy
@@ -147,14 +147,14 @@
 - [ ] /blog → loads articles from DB (or empty state if none)
 
 ### UI/UX Improvements
-- [ ] Sidebar has: Video and Affiliate links for users, Settings link for admin
+- [x] Sidebar has: Video and Affiliate links for users, Settings link for admin
 - [ ] All pages have proper page titles and meta descriptions
 - [ ] Remove fake via.placeholder.com images from all pages
-- [ ] AgeVerificationModal render fix
+- [x] AgeVerificationModal render fix
 - [ ] Real AI generation in server (not placeholder)
 - [ ] SettingsPage profile save to DB
 - [ ] AdminUsers — real DB data instead of mockUsers
 - [ ] Pricing — USD → INR + Razorpay button
-- [ ] AdminSettings page — API keys + config
+- [x] AdminSettings page — API keys + config
 - [ ] Affiliate Dashboard for users
 - [ ] Blog page — load from DB

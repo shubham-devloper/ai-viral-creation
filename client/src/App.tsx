@@ -16,6 +16,7 @@ import GenerateVideo from "./pages/GenerateVideo";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminGenerations from "./pages/AdminGenerations";
+import AdminSettings from "./pages/AdminSettings";
 import AgeVerificationModal from "./components/AgeVerificationModal";
 import Pricing from "./pages/Pricing";
 import Affiliate from "./pages/Affiliate";
@@ -41,6 +42,7 @@ function Router() {
       <Route path={"/admin"} component={() => <ProtectedRoute component={AdminDashboard} isAdmin />} />
       <Route path={"/admin/users"} component={() => <ProtectedRoute component={AdminUsers} isAdmin />} />
       <Route path={"/admin/generations"} component={() => <ProtectedRoute component={AdminGenerations} isAdmin />} />
+      <Route path={"/admin/settings"} component={() => <ProtectedRoute component={AdminSettings} isAdmin />} />
       <Route path={"/pricing"} component={Pricing} />
       <Route path={"/affiliate"} component={Affiliate} />
       <Route path={"/blog"} component={Blog} />

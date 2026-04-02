@@ -34,10 +34,31 @@ const menuItems = [
   { icon: Wand2, label: "Generate Image", path: "/dashboard/generate-image" },
   { icon: BookOpen, label: "Generate Story", path: "/dashboard/generate-story" },
   { icon: Users, label: "Generate Avatar", path: "/dashboard/generate-avatar" },
+  { icon: SparklesIcon, label: "Generate Video", path: "/dashboard/generate-video" },
   { icon: Zap, label: "Credits", path: "/dashboard/credits" },
   { icon: History, label: "History", path: "/dashboard/history" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];
+
+const adminMenuItems = [
+  { icon: LayoutDashboard, label: "Admin Dashboard", path: "/admin" },
+  { icon: Users, label: "Users", path: "/admin/users" },
+  { icon: SparklesIcon, label: "Generations", path: "/admin/generations" },
+  { icon: Settings, label: "Admin Settings", path: "/admin/settings" },
+];
+
+const affiliateMenuItems = [
+  { icon: BookOpen, label: "Affiliate Dashboard", path: "/dashboard/affiliate" },
+];
+
+const getMenuItems = (userRole?: string) => {
+  const items = [...menuItems];
+  if (userRole === "admin") {
+    items.push(...adminMenuItems);
+  }
+  items.push(...affiliateMenuItems);
+  return items;
+};
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
@@ -119,7 +140,8 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
+  const allMenuItems = getMenuItems(user?.role);
+  const activeMenuItem = allMenuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -187,7 +209,7 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map(item => {
+              {allMenuItems.map(item => {
                 const isActive = location === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>
