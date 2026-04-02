@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
@@ -392,4 +392,37 @@ export async function getUserApiKeys(userId: number) {
     .from(user_api_keys)
     .where(and(eq(user_api_keys.user_id, userId), eq(user_api_keys.is_active, true)))
     .orderBy(desc(user_api_keys.createdAt));
+}
+
+
+// ============ EMAIL AUTH FUNCTIONS ============
+
+export async function getUserByEmail(email: string) {
+  const database = await getDb();
+  if (!database) return null;
+  const result = await database.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function updateLastSignedIn(userId: number) {
+  const database = await getDb();
+  if (!database) return;
+  await database.update(users).set({ lastSignedIn: new Date(), updatedAt: new Date() }).where(eq(users.id, userId));
+}
+
+export async function updateUserProfile(userId: number, data: { name?: string; mobile?: string }) {
+  const database = await getDb();
+  if (!database) return;
+  await database.update(users).set({ ...data, updatedAt: new Date() }).where(eq(users.id, userId));
+}
+
+export async function getAllUsers(search?: string, limit = 100) {
+  const database = await getDb();
+  if (!database) return [];
+  if (search) {
+    return database.select().from(users)
+      .where(or(like(users.email, `%${search}%`), like(users.name, `%${search}%`)))
+      .limit(limit).orderBy(users.createdAt);
+  }
+  return database.select().from(users).limit(limit).orderBy(users.createdAt);
 }
