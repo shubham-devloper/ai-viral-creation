@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
@@ -48,61 +47,7 @@ export const appRouter = router({
         }
 
         return { success: true, age };
-    
-    emailRegister: publicProcedure
-      .input(z.object({
-        name: z.string().min(2).max(100),
-        email: z.string().email(),
-        mobile: z.string().optional(),
-        password: z.string().min(8).max(100),
-        referredBy: z.string().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const existing = await db.getUserByEmail(input.email);
-        if (existing) throw new TRPCError({ code: "CONFLICT", message: "Email already registered. Please login." });
-        const password_hash = await bcrypt.hash(input.password, 10);
-        const openId = `email_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        await db.upsertUser({ openId, name: input.name, email: input.email, mobile: input.mobile || null, password_hash, loginMethod: "email", referred_by: input.referredBy || null, lastSignedIn: new Date() });
-        const newUser = await db.getUserByEmail(input.email);
-        if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "User creation failed" });
-        await db.getOrCreateCredits(newUser.id);
-        if (input.referredBy) {
-          const affiliate = await db.getAffiliateByCode(input.referredBy);
-          if (affiliate) await db.updateCredits(affiliate.user_id, 50, "Referral bonus");
-        }
-        const { ONE_YEAR_MS } = await import("@shared/const");
-        const { getSessionCookieOptions } = await import("./_core/cookies");
-        const { createSessionToken } = await import("./_core/auth");
-        const sessionToken = await createSessionToken(openId, { name: input.name, expiresInMs: ONE_YEAR_MS });
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
-        return { success: true };
       }),
-
-    emailLogin: publicProcedure
-      .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
-      .mutation(async ({ ctx, input }) => {
-        const user = await db.getUserByEmail(input.email);
-        if (!user || !user.password_hash) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
-        const valid = await bcrypt.compare(input.password, user.password_hash);
-        if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
-        if (!(user as any).is_active) throw new TRPCError({ code: "FORBIDDEN", message: "Account suspended." });
-        await db.updateLastSignedIn(user.id);
-        const { ONE_YEAR_MS } = await import("@shared/const");
-        const { getSessionCookieOptions } = await import("./_core/cookies");
-        const { createSessionToken } = await import("./_core/auth");
-        const sessionToken = await createSessionToken(user.openId, { name: user.name || "", expiresInMs: ONE_YEAR_MS });
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
-        return { success: true };
-      }),
-
-    updateProfile: protectedProcedure
-      .input(z.object({ name: z.string().min(2).optional(), mobile: z.string().optional() }))
-      .mutation(async ({ ctx, input }) => {
-        await db.updateUserProfile(ctx.user!.id, input);
-        return { success: true };
-      }),
-  }),
-
   }),
 
   credits: router({
