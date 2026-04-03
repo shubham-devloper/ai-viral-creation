@@ -190,6 +190,70 @@ export const appRouter = router({
       }),
   }),
 
+  // Affiliate routes
+  affiliate: router({
+    getCode: protectedProcedure.query(async ({ ctx }) => {
+      const affiliate = await db.getAffiliateByUserId(ctx.user!.id);
+      if (!affiliate) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Affiliate account not found. Please join the affiliate program first.",
+        });
+      }
+      return {
+        code: affiliate.code,
+        userId: affiliate.user_id,
+        createdAt: affiliate.createdAt,
+      };
+    }),
+
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      const affiliate = await db.getAffiliateByUserId(ctx.user!.id);
+      if (!affiliate) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Affiliate account not found. Please join the affiliate program first.",
+        });
+      }
+      return {
+        referrals: affiliate.total_referrals ?? 0,
+        earned: parseFloat(affiliate.total_earnings?.toString() ?? "0"),
+        pending: parseFloat(affiliate.pending_payout?.toString() ?? "0"),
+        paidOut: parseFloat(affiliate.paid_out?.toString() ?? "0"),
+        isActive: affiliate.is_active ?? true,
+      };
+    }),
+
+    requestPayout: protectedProcedure
+      .input(z.object({ amount: z.number().min(500) }))
+      .mutation(async ({ ctx, input }) => {
+        const affiliate = await db.getAffiliateByUserId(ctx.user!.id);
+        if (!affiliate) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Affiliate account not found.",
+          });
+        }
+
+        const pending = parseFloat(affiliate.pending_payout?.toString() ?? "0");
+        if (pending < input.amount) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Insufficient pending payout. Available: ₹${pending.toFixed(2)}`,
+          });
+        }
+
+        if (input.amount < 500) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Minimum payout amount is ₹500",
+          });
+        }
+
+        return { success: true, message: "Payout request submitted" };
+      }),
+  }),
+
   // Profile routes
   profile: router({
     get: protectedProcedure.query(async ({ ctx }) => {

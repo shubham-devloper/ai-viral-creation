@@ -31,9 +31,9 @@
 - [x] Implement Razorpay payment integration
 - [x] Build credit purchase flow with payment verification
 - [x] Create transaction history page
-- [ ] Implement affiliate code generation and referral tracking
-- [ ] Build affiliate dashboard with earnings tracking
-- [ ] Create commission calculation and payout management
+- [x] Implement affiliate code generation and referral tracking
+- [x] Build affiliate dashboard with earnings tracking
+- [x] Create commission calculation and payout management
 
 ## Phase 5: Video & Avatar Generation
 - [x] Implement avatar generation UI and API integration
@@ -134,7 +134,7 @@
 - [ ] /dashboard/history → shows real generations from DB
 - [ ] /dashboard/credits → shows real balance, working Razorpay payment
 - [ ] /dashboard/settings → saves name/mobile to DB
-- [ ] /dashboard/affiliate → shows affiliate code, stats, referrals
+- [x] /dashboard/affiliate → shows affiliate code, stats, referrals
 
 ### Admin Features
 - [x] /admin → works only for admin role users
@@ -156,5 +156,5 @@
 - [ ] AdminUsers — real DB data instead of mockUsers
 - [ ] Pricing — USD → INR + Razorpay button
 - [x] AdminSettings page — API keys + config
-- [ ] Affiliate Dashboard for users
+- [x] Affiliate Dashboard for users
 - [ ] Blog page — load from DB
