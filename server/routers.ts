@@ -48,6 +48,16 @@ export const appRouter = router({
 
         return { success: true, age };
       }),
+    updateProfile: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().optional(),
+          mobile: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return db.updateUserProfile(ctx.user!.id, input);
+      }),
   }),
 
   credits: router({
@@ -154,40 +164,65 @@ export const appRouter = router({
       };
     }),
 
-    users: adminProcedure
-      .input(
-        z.object({
-          limit: z.number().default(50),
-          offset: z.number().default(0),
-          search: z.string().optional(),
-        })
-      )
-      .query(async () => {
-        return [];
-      }),
+    users: router({
+      list: adminProcedure
+        .input(
+          z.object({
+            limit: z.number().default(50),
+            offset: z.number().default(0),
+            search: z.string().optional(),
+          })
+        )
+        .query(async ({ input }) => {
+          return db.getAllUsers(input.limit, input.offset);
+        }),
+    }),
 
-    generations: adminProcedure
-      .input(
-        z.object({
-          limit: z.number().default(50),
-          offset: z.number().default(0),
-          status: z.enum(["PROCESSING", "COMPLETED", "FAILED"]).optional(),
-        })
-      )
-      .query(async () => {
-        return [];
-      }),
+    config: router({
+      set: adminProcedure
+        .input(
+          z.object({
+            key: z.string(),
+            value: z.string(),
+          })
+        )
+        .mutation(async ({ input }) => {
+          await db.setConfig(input.key, input.value);
+          return { success: true };
+        }),
 
-    updateGenerationStatus: adminProcedure
-      .input(
-        z.object({
-          generationId: z.number(),
-          status: z.enum(["PROCESSING", "COMPLETED", "FAILED"]),
-        })
-      )
-      .mutation(async ({ input }) => {
-        return db.updateGenerationStatus(input.generationId, input.status);
-      }),
+      get: adminProcedure
+        .input(z.object({ key: z.string() }))
+        .query(async ({ input }) => {
+          const value = await db.getConfig(input.key);
+          return { value };
+        }),
+    }),
+
+    generations: router({
+      list: adminProcedure
+        .input(
+          z.object({
+            limit: z.number().default(50),
+            offset: z.number().default(0),
+            status: z.enum(["PROCESSING", "COMPLETED", "FAILED"]).optional(),
+          })
+        )
+        .query(async () => {
+          return [];
+        }),
+
+      updateStatus: adminProcedure
+        .input(
+          z.object({
+            generationId: z.number(),
+            status: z.enum(["PROCESSING", "COMPLETED", "FAILED"]),
+          })
+        )
+        .mutation(async ({ input }) => {
+          return db.updateGenerationStatus(input.generationId, input.status);
+        }),
+    })
   }),
 
   // Affiliate routes

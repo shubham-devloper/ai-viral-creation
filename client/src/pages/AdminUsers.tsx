@@ -43,58 +43,18 @@ export default function AdminUsers() {
     return null;
   }
 
-  // Mock user data
-  const mockUsers: User[] = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john@example.com",
-      role: "admin",
-      createdAt: new Date("2026-01-15"),
-      lastSignedIn: new Date("2026-03-30"),
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane@example.com",
-      role: "user",
-      createdAt: new Date("2026-02-01"),
-      lastSignedIn: new Date("2026-03-28"),
-    },
-    {
-      id: 3,
-      name: "Bob Johnson",
-      email: "bob@example.com",
-      role: "user",
-      createdAt: new Date("2026-02-10"),
-      lastSignedIn: new Date("2026-03-25"),
-    },
-    {
-      id: 4,
-      name: "Alice Williams",
-      email: "alice@example.com",
-      role: "user",
-      createdAt: new Date("2026-02-20"),
-      lastSignedIn: new Date("2026-03-29"),
-    },
-    {
-      id: 5,
-      name: "Charlie Brown",
-      email: "charlie@example.com",
-      role: "admin",
-      createdAt: new Date("2026-01-01"),
-      lastSignedIn: new Date("2026-03-30"),
-    },
-  ];
+  // Fetch users from API
+  const { data: usersData, isLoading } = trpc.admin.users.list.useQuery({});
+  const users = usersData || [];
 
   // Filter and sort users
   const filteredUsers = useMemo(() => {
-    let filtered = mockUsers;
+    let filtered = users;
 
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(
-        (u) =>
+        (u: User) =>
           u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           u.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -102,7 +62,7 @@ export default function AdminUsers() {
 
     // Apply role filter
     if (roleFilter !== "all") {
-      filtered = filtered.filter((u) => u.role === roleFilter);
+      filtered = filtered.filter((u: User) => u.role === roleFilter);
     }
 
     // Apply sorting
@@ -138,7 +98,7 @@ export default function AdminUsers() {
               <CardTitle className="text-white text-sm">Total Users</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-purple-400">{mockUsers.length}</div>
+              <div className="text-3xl font-bold text-purple-400">{users.length}</div>
             </CardContent>
           </Card>
 
@@ -148,7 +108,7 @@ export default function AdminUsers() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-400">
-                {mockUsers.filter((u) => u.role === "admin").length}
+                {users.filter((u: User) => u.role === "admin").length}
               </div>
             </CardContent>
           </Card>
@@ -159,7 +119,7 @@ export default function AdminUsers() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-400">
-                {mockUsers.filter((u) => u.role === "user").length}
+                {users.filter((u: User) => u.role === "user").length}
               </div>
             </CardContent>
           </Card>
@@ -213,20 +173,30 @@ export default function AdminUsers() {
             <CardTitle className="text-white">Users ({filteredUsers.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Name</th>
-                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
-                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Role</th>
-                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Joined</th>
-                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Last Login</th>
-                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((u) => (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                <span className="ml-2 text-gray-400">Loading users...</span>
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">No users found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-700">
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Name</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Role</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Joined</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Last Login</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((u) => (
                     <tr key={u.id} className="border-b border-slate-700 hover:bg-slate-700/50">
                       <td className="py-3 px-4 text-white">{u.name || "-"}</td>
                       <td className="py-3 px-4 text-gray-400">{u.email || "-"}</td>
@@ -275,10 +245,11 @@ export default function AdminUsers() {
                         </DropdownMenu>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  ))})
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

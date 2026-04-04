@@ -152,9 +152,10 @@
 - [ ] Remove fake via.placeholder.com images from all pages
 - [x] AgeVerificationModal render fix
 - [ ] Real AI generation in server (not placeholder)
-- [ ] SettingsPage profile save to DB
-- [ ] AdminUsers — real DB data instead of mockUsers
+- [x] SettingsPage profile save to DB
+- [x] AdminUsers — real DB data instead of mockUsers
 - [ ] Pricing — USD → INR + Razorpay button
 - [x] AdminSettings page — API keys + config
 - [x] Affiliate Dashboard for users
+- [x] AdminSettings — wire save to DB with trpc.admin.config.set
 - [ ] Blog page — load from DB

@@ -3,8 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { User, Mail, Phone, Lock, Bell, Shield } from "lucide-react";
+import { User, Mail, Phone, Lock, Bell, Shield, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -20,9 +22,24 @@ export default function SettingsPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    // TODO: Call API to update profile
-    setIsEditing(false);
+  const updateProfileMutation = trpc.auth.updateProfile.useMutation();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateProfileMutation.mutateAsync({
+        name: formData.name || undefined,
+        mobile: formData.mobile || undefined,
+      });
+      toast.success("Profile updated successfully");
+      setIsEditing(false);
+    } catch (error) {
+      toast.error("Failed to update profile");
+      console.error(error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -82,12 +99,20 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button
-                    onClick={handleSave}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    Save Changes
-                  </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
                   <Button
                     onClick={() => setIsEditing(false)}
                     variant="outline"

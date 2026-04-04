@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Copy, Eye, EyeOff, Save, AlertCircle } from "lucide-react";
+import { Copy, Eye, EyeOff, Save, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
+import { trpc } from "@/lib/trpc";
 
 export default function AdminSettings() {
   const [showApiKeys, setShowApiKeys] = useState(false);
@@ -29,9 +30,36 @@ export default function AdminSettings() {
     setUnsavedChanges(true);
   };
 
-  const handleSave = () => {
-    toast.success("Settings saved successfully");
-    setUnsavedChanges(false);
+  const configSetMutation = trpc.admin.config.set.useMutation();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Save all settings to database
+      const settingsToSave = [
+        { key: "imageGenerationCost", value: String(settings.imageGenerationCost) },
+        { key: "storyGenerationCost", value: String(settings.storyGenerationCost) },
+        { key: "avatarGenerationCost", value: String(settings.avatarGenerationCost) },
+        { key: "videoGenerationCost", value: String(settings.videoGenerationCost) },
+        { key: "razorpayKeyId", value: settings.razorpayKeyId },
+        { key: "razorpayKeySecret", value: settings.razorpayKeySecret },
+        { key: "replicateApiToken", value: settings.replicateApiToken },
+        { key: "manusForgApiKey", value: settings.manusForgApiKey },
+      ];
+
+      for (const setting of settingsToSave) {
+        await configSetMutation.mutateAsync(setting);
+      }
+
+      toast.success("Settings saved successfully");
+      setUnsavedChanges(false);
+    } catch (error) {
+      toast.error("Failed to save settings");
+      console.error(error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -226,11 +254,20 @@ export default function AdminSettings() {
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!unsavedChanges}
+            disabled={!unsavedChanges || isSaving}
             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
           >
-            <Save className="w-4 h-4 mr-2" />
-            Save Settings
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save Settings
+              </>
+            )}
           </Button>
         </div>
       </div>

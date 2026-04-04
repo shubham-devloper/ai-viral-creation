@@ -393,3 +393,28 @@ export async function getUserApiKeys(userId: number) {
     .where(and(eq(user_api_keys.user_id, userId), eq(user_api_keys.is_active, true)))
     .orderBy(desc(user_api_keys.createdAt));
 }
+
+// Admin functions
+export async function getAllUsers(limit = 50, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const result = await db.select().from(users).limit(limit).offset(offset);
+  return result;
+}
+
+export async function updateUserProfile(userId: number, data: { name?: string; mobile?: string }) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const updateData: Record<string, unknown> = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.mobile !== undefined) updateData.mobile = data.mobile;
+
+  if (Object.keys(updateData).length === 0) {
+    return getUserById(userId);
+  }
+
+  await db.update(users).set(updateData).where(eq(users.id, userId));
+  return getUserById(userId);
+}
