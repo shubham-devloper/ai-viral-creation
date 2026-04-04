@@ -1,261 +1,226 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useMemo } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { AlertCircle, Zap, Lock, Clock, Sparkles } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Loader2, Download, Zap, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+
+const VIDEO_STYLES = [
+  { id: "cinematic", name: "Cinematic", icon: "🎬", description: "Movie-like quality" },
+  { id: "animation", name: "Animation", icon: "🎨", description: "Animated style" },
+  { id: "documentary", name: "Documentary", icon: "📹", description: "Documentary feel" },
+  { id: "music-video", name: "Music Video", icon: "🎵", description: "Music video style" },
+];
+
+const VIDEO_DURATIONS = [
+  { id: "15s", label: "15 seconds", duration: "15s", credits: 15 },
+  { id: "30s", label: "30 seconds", duration: "30s", credits: 25 },
+  { id: "60s", label: "1 minute", duration: "60s", credits: 40 },
+];
 
 export default function GenerateVideo() {
-  const { user } = useAuth();
   const [prompt, setPrompt] = useState("");
-  const [duration, setDuration] = useState("15");
-  const [style, setStyle] = useState("cinematic");
-  const [loading, setLoading] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState("cinematic");
+  const [selectedDuration, setSelectedDuration] = useState("30s");
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const { data: credits } = trpc.credits.getBalance.useQuery();
-  const { data: subscription } = trpc.profile.get.useQuery();
+  const { data: creditData } = trpc.credits.getBalance.useQuery();
+  const generateMutation = trpc.generation.create.useMutation();
 
-  const plan = (subscription as any)?.plan ?? "FREE";
-  const isFreePlan = plan === "FREE";
-  const videoCost = 30;
-  const hasEnoughCredits = (credits?.balance ?? 0) >= videoCost;
+  const creditCost = useMemo(() => {
+    const duration = VIDEO_DURATIONS.find((d) => d.id === selectedDuration);
+    return duration?.credits || 25;
+  }, [selectedDuration]);
 
-  const styles = [
-    { id: "cinematic", label: "Cinematic", description: "Professional film quality" },
-    { id: "animated", label: "Animated", description: "Cartoon style animation" },
-    { id: "documentary", label: "Documentary", description: "Realistic documentary" },
-    { id: "abstract", label: "Abstract", description: "Modern abstract visuals" },
-  ];
-
-  const durations = [
-    { value: "15", label: "15 seconds" },
-    { value: "30", label: "30 seconds" },
-    { value: "60", label: "1 minute" },
-  ];
+  const hasEnoughCredits = (creditData?.balance ?? 0) >= creditCost;
+  const promptLength = prompt.trim().length;
+  const isValidPrompt = promptLength >= 10 && promptLength <= 500;
 
   const handleGenerate = async () => {
-    if (!prompt.trim()) {
-      alert("Please enter a prompt");
-      return;
-    }
+    if (!isValidPrompt || !hasEnoughCredits) return;
 
-    if (isFreePlan) {
-      alert("Video generation requires a paid plan. Please upgrade to continue.");
-      return;
-    }
-
-    if (!hasEnoughCredits) {
-      alert(`Insufficient credits. You need ${videoCost} credits but have ${credits?.balance ?? 0}`);
-      return;
-    }
-
-    setLoading(true);
+    setIsGenerating(true);
     try {
-      // Call generation API
-      alert("Video generation started! This feature will be available soon.");
+      const result = await generateMutation.mutateAsync({
+        type: "VIDEO",
+        prompt: `${prompt} in ${selectedStyle} style`,
+        quality: "standard" as const,
+      });
+
+      if (result.success) {
+        toast.success("Video generation started!");
+        setPrompt("");
+      }
+    } catch (error) {
+      toast.error("Failed to generate video.");
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Upgrade Banner for FREE users */}
-      {isFreePlan && (
-        <Alert className="border-yellow-600 bg-yellow-900/20">
-          <Lock className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-200">
-            <strong>Video generation is a premium feature.</strong> Upgrade to Starter plan or higher to create videos.
-            <Button size="sm" variant="outline" className="ml-4 text-yellow-600 border-yellow-600 hover:bg-yellow-900/50">
-              Upgrade Now
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+    <DashboardLayout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Generate Videos</h1>
+          <p className="text-gray-400">Create stunning AI-generated videos from text descriptions</p>
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Main Generation Form */}
-        <div className="md:col-span-2 space-y-6">
-          <Card className="border-purple-700 bg-purple-950/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-400" />
-                Create Your Video
-              </CardTitle>
-              <CardDescription>Describe the video you want to create</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Prompt Input */}
-              <div className="space-y-2">
-                <Label htmlFor="prompt" className="text-purple-200">
-                  Video Prompt
-                </Label>
-                <Textarea
-                  id="prompt"
-                  placeholder="Describe your video... e.g., 'A sunset over mountains with birds flying'"
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="bg-slate-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-white">Your Prompt</CardTitle>
+                <CardDescription>Describe the video you want to generate</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  disabled={isFreePlan || loading}
-                  className="min-h-24 bg-purple-900/30 border-purple-600 text-white placeholder:text-purple-400"
+                  placeholder="e.g., A drone flying over a beautiful mountain landscape at sunset..."
+                  className="w-full h-32 bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 resize-none"
+                  maxLength={500}
                 />
-                <p className="text-xs text-purple-400">{prompt.length}/2000 characters</p>
-              </div>
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-gray-400">{promptLength}/500 characters</p>
+                  <p className="text-xs text-gray-500">Min 10 characters recommended</p>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Duration Selection */}
-              <div className="space-y-3">
-                <Label className="text-purple-200">Duration</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {durations.map((dur) => (
-                    <Button
-                      key={dur.value}
-                      variant={duration === dur.value ? "default" : "outline"}
-                      className={`${
-                        duration === dur.value
-                          ? "bg-purple-600 hover:bg-purple-700"
-                          : "border-purple-600 text-purple-200 hover:bg-purple-900/50"
+            <Card className="bg-slate-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-white">Video Style</CardTitle>
+                <CardDescription>Choose the style for your video</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {VIDEO_STYLES.map((style) => (
+                    <button
+                      key={style.id}
+                      onClick={() => setSelectedStyle(style.id)}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        selectedStyle === style.id
+                          ? "border-purple-500 bg-purple-500/20"
+                          : "border-purple-500/20 bg-slate-900/50 hover:border-purple-500/50"
                       }`}
-                      onClick={() => setDuration(dur.value)}
-                      disabled={isFreePlan || loading}
                     >
-                      <Clock className="w-4 h-4 mr-2" />
-                      {dur.label}
-                    </Button>
+                      <div className="text-2xl mb-2">{style.icon}</div>
+                      <p className="text-sm font-medium text-white">{style.name}</p>
+                    </button>
                   ))}
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Style Selection */}
-              <div className="space-y-3">
-                <Label className="text-purple-200">Style</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {styles.map((s) => (
-                    <Button
-                      key={s.id}
-                      variant={style === s.id ? "default" : "outline"}
-                      className={`h-auto flex flex-col items-start p-3 ${
-                        style === s.id
-                          ? "bg-purple-600 hover:bg-purple-700"
-                          : "border-purple-600 text-purple-200 hover:bg-purple-900/50 justify-start"
+            <Card className="bg-slate-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-white">Video Duration</CardTitle>
+                <CardDescription>Longer videos use more credits</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {VIDEO_DURATIONS.map((dur) => (
+                    <button
+                      key={dur.id}
+                      onClick={() => setSelectedDuration(dur.id)}
+                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                        selectedDuration === dur.id
+                          ? "border-purple-500 bg-purple-500/20"
+                          : "border-purple-500/20 bg-slate-900/50 hover:border-purple-500/50"
                       }`}
-                      onClick={() => setStyle(s.id)}
-                      disabled={isFreePlan || loading}
                     >
-                      <span className="font-medium">{s.label}</span>
-                      <span className="text-xs opacity-70">{s.description}</span>
-                    </Button>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="font-medium text-white">{dur.label}</p>
+                        <span className="text-sm font-bold text-purple-400">{dur.credits} credits</span>
+                      </div>
+                    </button>
                   ))}
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              {/* Generate Button */}
-              <Button
-                onClick={handleGenerate}
-                disabled={isFreePlan || !hasEnoughCredits || loading || !prompt.trim()}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-              >
-                {loading ? (
-                  <>
-                    <Clock className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Video
-                  </>
+          <div className="space-y-6">
+            <Card className="bg-gradient-to-br from-purple-500/20 to-purple-500/10 border-purple-500/30">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-purple-400" />
+                  Credit Cost
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-400 mb-2">Cost for this generation:</p>
+                  <div className="text-4xl font-bold text-purple-400 mb-4">{creditCost}</div>
+                </div>
+
+                <div className="bg-slate-900/50 rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Your balance:</span>
+                    <span className="text-white font-semibold">{creditData?.balance ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">After generation:</span>
+                    <span className={`font-semibold ${hasEnoughCredits ? "text-green-400" : "text-red-400"}`}>
+                      {Math.max(0, (creditData?.balance ?? 0) - creditCost)}
+                    </span>
+                  </div>
+                </div>
+
+                {!hasEnoughCredits && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-red-400">Insufficient Credits</p>
+                      <p className="text-xs text-red-300 mt-1">You need {creditCost - (creditData?.balance ?? 0)} more</p>
+                    </div>
+                  </div>
                 )}
-              </Button>
 
-              {isFreePlan && (
-                <Alert className="border-purple-600 bg-purple-900/20">
-                  <Lock className="h-4 w-4 text-purple-400" />
-                  <AlertDescription className="text-purple-300">
-                    Video generation is locked for FREE plan. Upgrade to Starter or higher.
-                  </AlertDescription>
-                </Alert>
-              )}
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !hasEnoughCredits || !isValidPrompt}
+                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Video
+                    </>
+                  )}
+                </Button>
 
-              {!isFreePlan && !hasEnoughCredits && (
-                <Alert className="border-red-600 bg-red-900/20">
-                  <AlertCircle className="h-4 w-4 text-red-400" />
-                  <AlertDescription className="text-red-300">
-                    Insufficient credits. You need {videoCost} credits but have {credits?.balance ?? 0}.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <Button
+                  variant="outline"
+                  className="w-full border-purple-500/20 text-purple-400 hover:bg-purple-500/10"
+                  asChild
+                >
+                  <a href="/dashboard/credits">Buy Credits</a>
+                </Button>
+              </CardContent>
+            </Card>
 
-        {/* Credit Cost Preview */}
-        <div className="space-y-4">
-          <Card className="border-purple-700 bg-purple-950/50 sticky top-4">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Zap className="w-4 h-4 text-yellow-400" />
-                Credit Cost
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-purple-300">Base Cost</span>
-                  <span className="text-purple-100 font-medium">{videoCost} credits</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-purple-300">Your Balance</span>
-                  <span className={`font-medium ${(credits?.balance ?? 0) >= videoCost ? "text-green-400" : "text-red-400"}`}>
-                    {credits?.balance ?? 0} credits
-                  </span>
-                </div>
-                <div className="border-t border-purple-600 pt-2 flex justify-between">
-                  <span className="text-purple-200 font-medium">After Generation</span>
-                  <span className="text-purple-100 font-bold">
-                    {Math.max(0, (credits?.balance ?? 0) - videoCost)} credits
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-purple-900/50 rounded-lg p-3 space-y-2">
-                <p className="text-xs font-medium text-purple-300">Plan: {plan}</p>
-                {isFreePlan ? (
-                  <p className="text-xs text-purple-400">
-                    Upgrade to unlock video generation
-                  </p>
-                ) : (
-                  <p className="text-xs text-purple-400">
-                    {hasEnoughCredits ? "You have enough credits" : "Not enough credits"}
-                  </p>
-                )}
-              </div>
-
-              <Button
-                variant="outline"
-                className="w-full border-purple-600 text-purple-200 hover:bg-purple-900/50"
-              >
-                Buy More Credits
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Tips Card */}
-          <Card className="border-purple-700 bg-purple-950/50">
-            <CardHeader>
-              <CardTitle className="text-sm">Tips for Better Videos</CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs space-y-2 text-purple-300">
-              <p>• Be specific about what you want</p>
-              <p>• Include mood and atmosphere</p>
-              <p>• Mention camera movements</p>
-              <p>• Specify colors and lighting</p>
-            </CardContent>
-          </Card>
+            <Card className="bg-slate-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-white text-sm">Tips for Best Results</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-gray-400">
+                <p>✓ Describe camera movements and angles</p>
+                <p>✓ Include lighting and atmosphere details</p>
+                <p>✓ Mention transitions and effects</p>
+                <p>✓ Specify music or sound style</p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

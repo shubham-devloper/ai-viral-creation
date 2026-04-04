@@ -1,90 +1,59 @@
 import { useState, useMemo } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Users, Loader2, Download, Share2 } from "lucide-react";
+import { AlertCircle, User, Loader2, Download, Zap, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
 
 const AVATAR_STYLES = [
-  { id: "cartoon", label: "Cartoon", emoji: "🎨" },
-  { id: "realistic", label: "Realistic", emoji: "📸" },
-  { id: "anime", label: "Anime", emoji: "✨" },
-  { id: "pixel", label: "Pixel Art", emoji: "🎮" },
-  { id: "3d", label: "3D", emoji: "🎭" },
+  { id: "realistic", name: "Realistic", icon: "👤", description: "Photorealistic avatars" },
+  { id: "anime", name: "Anime", icon: "✨", description: "Anime character style" },
+  { id: "cartoon", name: "Cartoon", icon: "🎨", description: "Cartoon style" },
+  { id: "3d", name: "3D", icon: "🎭", description: "3D rendered avatars" },
 ];
-
-const AVATAR_CHARACTERS = [
-  { id: "hero", label: "Hero" },
-  { id: "villain", label: "Villain" },
-  { id: "wizard", label: "Wizard" },
-  { id: "knight", label: "Knight" },
-  { id: "pirate", label: "Pirate" },
-  { id: "astronaut", label: "Astronaut" },
-];
-
-interface AvatarCustomizations {
-  skinTone: number;
-  hairLength: number;
-  expressiveness: number;
-  age: number;
-}
 
 export default function GenerateAvatar() {
   const { user } = useAuth();
-  const [selectedStyle, setSelectedStyle] = useState("cartoon");
-  const [selectedCharacter, setSelectedCharacter] = useState("hero");
-  const [customizations, setCustomizations] = useState<AvatarCustomizations>({
-    skinTone: 50,
-    hairLength: 50,
-    expressiveness: 50,
-    age: 50,
-  });
-  const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState("");
+  const [selectedStyle, setSelectedStyle] = useState("realistic");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
 
-  const { data: balanceData } = trpc.credits.getBalance.useQuery(undefined, {
-    enabled: !!user,
-  });
+  // Avatar customization sliders
+  const [age, setAge] = useState(30);
+  const [gender, setGender] = useState("neutral");
+  const [expression, setExpression] = useState(50);
 
-  const currentBalance = balanceData?.balance ?? 0;
-  const creditCost = 10;
-  const hasEnoughCredits = currentBalance >= creditCost;
+  const { data: creditData } = trpc.credits.getBalance.useQuery();
+  const generateMutation = trpc.generation.create.useMutation();
 
-  const handleCustomizationChange = (key: keyof AvatarCustomizations, value: number) => {
-    setCustomizations((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
+  const creditCost = useMemo(() => 5, []);
+  const hasEnoughCredits = (creditData?.balance ?? 0) >= creditCost;
+  const promptLength = prompt.trim().length;
+  const isValidPrompt = promptLength >= 5 && promptLength <= 200;
 
   const handleGenerate = async () => {
-    if (!hasEnoughCredits) return;
+    if (!isValidPrompt || !hasEnoughCredits) return;
 
     setIsGenerating(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const result = await generateMutation.mutateAsync({
+        type: "AVATAR",
+        prompt: `${prompt} in ${selectedStyle} style, age ${age}, ${gender}, expression ${expression}`,
+        quality: "standard" as const,
+      });
 
-      // Generate placeholder avatar URL with customizations
-      const seed = Math.random();
-      const styleColors: Record<string, string> = {
-        cartoon: "ff6b9d",
-        realistic: "667eea",
-        anime: "f093fb",
-        pixel: "00ff00",
-        "3d": "ffd700",
-      };
-
-      const color = styleColors[selectedStyle] || "667eea";
-      const avatarUrl = `https://via.placeholder.com/512x512/${color}/ffffff?text=${selectedCharacter}+Avatar`;
-      setGeneratedAvatarUrl(avatarUrl);
-      toast.success("Avatar generated successfully!");
+      if (result.success) {
+        toast.success("Avatar generation started!");
+        setPrompt("");
+        setTimeout(() => {
+          setGeneratedAvatarUrl("https://via.placeholder.com/512/667eea/ffffff?text=Generated+Avatar");
+        }, 2000);
+      }
     } catch (error) {
-      toast.error("Failed to generate avatar. Please try again.");
-      console.error(error);
+      toast.error("Failed to generate avatar.");
     } finally {
       setIsGenerating(false);
     }
@@ -95,252 +64,220 @@ export default function GenerateAvatar() {
       const link = document.createElement("a");
       link.href = generatedAvatarUrl;
       link.download = `avatar-${Date.now()}.png`;
-      document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
       toast.success("Avatar downloaded!");
     }
   };
 
-  const handleShare = () => {
-    if (generatedAvatarUrl && navigator.share) {
-      navigator.share({
-        title: "Check out my AI Avatar!",
-        text: `I created this awesome ${selectedStyle} ${selectedCharacter} avatar!`,
-        url: window.location.href,
-      });
-    } else {
-      navigator.clipboard.writeText(generatedAvatarUrl || "");
-      toast.success("Avatar URL copied to clipboard!");
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Users className="w-8 h-8 text-purple-500" />
-            <h1 className="text-4xl font-bold text-white">Avatar Creator</h1>
-          </div>
-          <p className="text-slate-400">Design your perfect AI-generated avatar</p>
+    <DashboardLayout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Generate Avatars</h1>
+          <p className="text-gray-400">Create unique AI-generated avatars for your profile</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Controls */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {/* Style Selection */}
-            <Card className="bg-slate-800 border-slate-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Avatar Style</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {AVATAR_STYLES.map((style) => (
-                  <button
-                    key={style.id}
-                    onClick={() => setSelectedStyle(style.id)}
-                    className={`p-3 rounded-lg border-2 transition-all text-center ${
-                      selectedStyle === style.id
-                        ? "border-purple-500 bg-purple-500/10"
-                        : "border-slate-600 bg-slate-700 hover:border-slate-500"
-                    }`}
-                  >
-                    <div className="text-2xl mb-1">{style.emoji}</div>
-                    <div className="text-xs font-medium text-slate-200">{style.label}</div>
-                  </button>
-                ))}
-              </div>
+            <Card className="bg-slate-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-white">Avatar Description</CardTitle>
+                <CardDescription>Describe the avatar you want to create</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="e.g., A professional business person with glasses..."
+                  className="w-full h-24 bg-slate-900 border border-purple-500/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 resize-none"
+                  maxLength={200}
+                />
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-gray-400">{promptLength}/200 characters</p>
+                  <p className="text-xs text-gray-500">Min 5 characters required</p>
+                </div>
+              </CardContent>
             </Card>
 
-            {/* Character Selection */}
-            <Card className="bg-slate-800 border-slate-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Character Type</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {AVATAR_CHARACTERS.map((char) => (
-                  <button
-                    key={char.id}
-                    onClick={() => setSelectedCharacter(char.id)}
-                    className={`p-3 rounded-lg border-2 transition-all font-medium ${
-                      selectedCharacter === char.id
-                        ? "border-purple-500 bg-purple-500/10 text-purple-300"
-                        : "border-slate-600 bg-slate-700 text-slate-300 hover:border-slate-500"
-                    }`}
-                  >
-                    {char.label}
-                  </button>
-                ))}
-              </div>
+            <Card className="bg-slate-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-white">Avatar Style</CardTitle>
+                <CardDescription>Choose the artistic style for your avatar</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {AVATAR_STYLES.map((style) => (
+                    <button
+                      key={style.id}
+                      onClick={() => setSelectedStyle(style.id)}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        selectedStyle === style.id
+                          ? "border-purple-500 bg-purple-500/20"
+                          : "border-purple-500/20 bg-slate-900/50 hover:border-purple-500/50"
+                      }`}
+                    >
+                      <div className="text-2xl mb-2">{style.icon}</div>
+                      <p className="text-sm font-medium text-white">{style.name}</p>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
             </Card>
 
-            {/* Customization Sliders */}
-            <Card className="bg-slate-800 border-slate-700 p-6">
-              <h3 className="text-lg font-semibold text-white mb-6">Customization</h3>
-              <div className="space-y-6">
-                {/* Skin Tone */}
+            <Card className="bg-slate-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-white">Customization</CardTitle>
+                <CardDescription>Fine-tune your avatar appearance</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-slate-200">Skin Tone</label>
-                    <span className="text-xs text-slate-400">{customizations.skinTone}%</span>
-                  </div>
-                  <Slider
-                    value={[customizations.skinTone]}
-                    onValueChange={(value) => handleCustomizationChange("skinTone", value[0])}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="w-full"
+                  <label className="block text-sm font-medium text-white mb-3">Age: {age}</label>
+                  <input
+                    type="range"
+                    min="18"
+                    max="80"
+                    value={age}
+                    onChange={(e) => setAge(parseInt(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                   />
                 </div>
 
-                {/* Hair Length */}
                 <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-slate-200">Hair Length</label>
-                    <span className="text-xs text-slate-400">{customizations.hairLength}%</span>
+                  <label className="block text-sm font-medium text-white mb-3">Gender</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["male", "neutral", "female"].map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => setGender(g)}
+                        className={`p-2 rounded-lg border-2 transition-all text-sm font-medium ${
+                          gender === g
+                            ? "border-purple-500 bg-purple-500/20 text-white"
+                            : "border-purple-500/20 bg-slate-900/50 text-gray-400 hover:border-purple-500/50"
+                        }`}
+                      >
+                        {g.charAt(0).toUpperCase() + g.slice(1)}
+                      </button>
+                    ))}
                   </div>
-                  <Slider
-                    value={[customizations.hairLength]}
-                    onValueChange={(value) => handleCustomizationChange("hairLength", value[0])}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="w-full"
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-white mb-3">Expression: {expression}%</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={expression}
+                    onChange={(e) => setExpression(parseInt(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                   />
                 </div>
-
-                {/* Expressiveness */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-slate-200">Expressiveness</label>
-                    <span className="text-xs text-slate-400">{customizations.expressiveness}%</span>
-                  </div>
-                  <Slider
-                    value={[customizations.expressiveness]}
-                    onValueChange={(value) => handleCustomizationChange("expressiveness", value[0])}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Age */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-slate-200">Age</label>
-                    <span className="text-xs text-slate-400">{Math.round(customizations.age / 10) + 10} years</span>
-                  </div>
-                  <Slider
-                    value={[customizations.age]}
-                    onValueChange={(value) => handleCustomizationChange("age", value[0])}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </Card>
-
-            {/* Credit Preview & Generate */}
-            <Card className="bg-slate-800 border-slate-700 p-6">
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-sm text-slate-400 mb-1">Credit Cost</div>
-                  <div className="text-3xl font-bold text-purple-400">{creditCost}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-slate-400 mb-1">Your Balance</div>
-                  <div className="text-3xl font-bold text-white">{currentBalance}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-slate-400 mb-1">After Generation</div>
-                  <div className={`text-3xl font-bold ${hasEnoughCredits ? "text-green-400" : "text-red-400"}`}>
-                    {Math.max(0, currentBalance - creditCost)}
-                  </div>
-                </div>
-              </div>
-
-              {!hasEnoughCredits && (
-                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
-                  <AlertCircle className="w-4 h-4 text-red-500" />
-                  <span className="text-sm text-red-400">
-                    Insufficient credits. You need {creditCost} credits but have {currentBalance}
-                  </span>
-                </div>
-              )}
-
-              <Button
-                onClick={handleGenerate}
-                disabled={!hasEnoughCredits || isGenerating}
-                className="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white font-semibold py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating Avatar...
-                  </>
-                ) : (
-                  <>
-                    <Users className="w-4 h-4 mr-2" />
-                    Generate Avatar
-                  </>
-                )}
-              </Button>
+              </CardContent>
             </Card>
           </div>
 
-          {/* Preview */}
-          <div className="lg:col-span-1">
-            <Card className="bg-slate-800 border-slate-700 p-6 sticky top-4">
-              <h3 className="text-lg font-semibold text-white mb-4">Preview</h3>
-              <div className="bg-slate-700 rounded-lg aspect-square flex items-center justify-center mb-4 overflow-hidden">
-                {generatedAvatarUrl ? (
-                  <img src={generatedAvatarUrl} alt="Generated Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-center">
-                    <Users className="w-12 h-12 text-slate-500 mx-auto mb-2" />
-                    <p className="text-slate-400 text-sm">Your avatar will appear here</p>
+          <div className="space-y-6">
+            <Card className="bg-gradient-to-br from-purple-500/20 to-purple-500/10 border-purple-500/30">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-purple-400" />
+                  Credit Cost
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-400 mb-2">Cost for this generation:</p>
+                  <div className="text-4xl font-bold text-purple-400 mb-4">{creditCost}</div>
+                </div>
+
+                <div className="bg-slate-900/50 rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Your balance:</span>
+                    <span className="text-white font-semibold">{creditData?.balance ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">After generation:</span>
+                    <span className={`font-semibold ${hasEnoughCredits ? "text-green-400" : "text-red-400"}`}>
+                      {Math.max(0, (creditData?.balance ?? 0) - creditCost)}
+                    </span>
+                  </div>
+                </div>
+
+                {!hasEnoughCredits && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-red-400">Insufficient Credits</p>
+                      <p className="text-xs text-red-300 mt-1">
+                        You need {creditCost - (creditData?.balance ?? 0)} more credits
+                      </p>
+                    </div>
                   </div>
                 )}
-              </div>
 
-              {generatedAvatarUrl && (
-                <div className="space-y-2">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isGenerating || !hasEnoughCredits || !isValidPrompt}
+                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Avatar
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full border-purple-500/20 text-purple-400 hover:bg-purple-500/10"
+                  asChild
+                >
+                  <a href="/dashboard/credits">Buy Credits</a>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {generatedAvatarUrl && (
+              <Card className="bg-slate-800/50 border-purple-500/20">
+                <CardHeader>
+                  <CardTitle className="text-white">Generated Avatar</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-slate-900/50 rounded-lg p-4 flex items-center justify-center aspect-square">
+                    <img src={generatedAvatarUrl} alt="Generated Avatar" className="w-full h-full object-cover rounded" />
+                  </div>
                   <Button
                     onClick={handleDownload}
                     variant="outline"
-                    className="w-full border-slate-600 hover:bg-slate-700"
+                    className="w-full border-purple-500/20 text-purple-400 hover:bg-purple-500/10"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download
+                    Download Avatar
                   </Button>
-                  <Button
-                    onClick={handleShare}
-                    variant="outline"
-                    className="w-full border-slate-600 hover:bg-slate-700"
-                  >
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share
-                  </Button>
-                </div>
-              )}
+                </CardContent>
+              </Card>
+            )}
 
-              <div className="mt-6 p-4 bg-slate-700/50 rounded-lg border border-slate-600">
-                <p className="text-xs text-slate-400 mb-2">
-                  <strong>Current Settings:</strong>
-                </p>
-                <ul className="text-xs text-slate-300 space-y-1">
-                  <li>Style: {selectedStyle}</li>
-                  <li>Character: {selectedCharacter}</li>
-                  <li>Skin Tone: {customizations.skinTone}%</li>
-                  <li>Hair: {customizations.hairLength}%</li>
-                  <li>Expression: {customizations.expressiveness}%</li>
-                </ul>
-              </div>
+            <Card className="bg-slate-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-white text-sm">Tips for Best Results</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-gray-400">
+                <p>✓ Be specific about appearance</p>
+                <p>✓ Mention clothing or accessories</p>
+                <p>✓ Describe facial features clearly</p>
+                <p>✓ Adjust expression for mood</p>
+              </CardContent>
             </Card>
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

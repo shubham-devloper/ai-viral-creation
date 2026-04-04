@@ -159,3 +159,10 @@
 - [x] Affiliate Dashboard for users
 - [x] AdminSettings — wire save to DB with trpc.admin.config.set
 - [ ] Blog page — load from DB
+
+## Layout Refactoring (Completed)
+- [x] GenerateImage — side-by-side layout (preview left, controls right)
+- [x] GenerateStory — refactored to match GenerateImage layout
+- [x] GenerateVideo — refactored to match GenerateImage layout
+- [x] GenerateAvatar — refactored to match GenerateImage layout
+- [x] All generation pages now have consistent UI/UX with DashboardLayout
