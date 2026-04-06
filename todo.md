@@ -200,3 +200,15 @@
   * Wrapped AI calls in try/catch to handle errors gracefully
   * Updates generation status to COMPLETED with outputUrl
   * Returns outputUrl in response for frontend display
+
+
+## TASK 5 & TASK 6: Remove Fake Placeholders & Wire Real Output (Completed)
+- [x] TASK 5: Remove fake image placeholder from GenerateImage
+  * Removed setTimeout with via.placeholder.com block
+  * Check if result.outputUrl exists after mutation
+  * If outputUrl: setGeneratedImage(outputUrl) and show success toast
+  * If no outputUrl: show info toast "Check History for your image"
+- [x] TASK 6: Remove fake avatar placeholder from GenerateAvatar
+  * Removed setTimeout with via.placeholder.com block
+  * Same logic as TASK 5: check result.outputUrl
+  * Display real avatar URL or direct user to History

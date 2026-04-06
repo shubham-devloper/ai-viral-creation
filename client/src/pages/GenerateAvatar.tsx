@@ -46,11 +46,13 @@ export default function GenerateAvatar() {
       });
 
       if (result.success) {
-        toast.success("Avatar generation started!");
+        if (result.outputUrl) {
+          setGeneratedAvatarUrl(result.outputUrl);
+          toast.success("Avatar generated successfully!");
+        } else {
+          toast.info("Avatar generation started. Check History for your avatar.");
+        }
         setPrompt("");
-        setTimeout(() => {
-          setGeneratedAvatarUrl("https://via.placeholder.com/512/667eea/ffffff?text=Generated+Avatar");
-        }, 2000);
       }
     } catch (error) {
       toast.error("Failed to generate avatar.");

@@ -63,14 +63,15 @@ export default function GenerateImage() {
       });
 
       if (result.success) {
-        toast.success("Image generation started! Check your history for results.");
+        if (result.outputUrl) {
+          setGeneratedImage(result.outputUrl);
+          toast.success("Image generated successfully!");
+        } else {
+          toast.info("Image generation started. Check History for your image.");
+        }
         setPrompt("");
         setSelectedStyle("realistic");
         setSelectedQuality("standard");
-        // Simulate image generation for demo
-        setTimeout(() => {
-          setGeneratedImage(`https://via.placeholder.com/1024/667eea/ffffff?text=Generated+Image`);
-        }, 2000);
       }
     } catch (error) {
       toast.error("Failed to generate image. Please try again.");
