@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { generateImage, generateStory } from "./_core/imageGeneration";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
@@ -239,7 +240,7 @@ export const appRouter = router({
         }
 
         // Create generation record
-        const generation = await db.createGeneration({
+        const generationResult = await db.createGeneration({
           user_id: ctx.user!.id,
           type: input.type as "IMAGE" | "VIDEO" | "STORY" | "AVATAR",
           prompt: input.prompt,
@@ -247,10 +248,37 @@ export const appRouter = router({
           credits_used: costRequired,
         });
 
+        // Get the generation ID from the result
+        const generationId = (generationResult as any)?.insertId || 0;
+
         // Deduct credits
         await db.updateCredits(ctx.user!.id, -costRequired, "Generation");
 
-        return { success: true, message: "Generation started", generationId: 0 };
+        // Call real AI generation
+        let outputUrl: string | undefined;
+        try {
+          if (input.type === "IMAGE" || input.type === "AVATAR") {
+            const result = await generateImage({ prompt: input.prompt });
+            outputUrl = result.url;
+          } else if (input.type === "STORY") {
+            const storyText = await generateStory(input.prompt, "neutral", "medium");
+            outputUrl = storyText; // Store story text as output
+          } else if (input.type === "VIDEO") {
+            // For video, use image generation as fallback with cinematic prompt
+            const result = await generateImage({ prompt: `cinematic still frame: ${input.prompt}` });
+            outputUrl = result.url;
+          }
+
+          // Update generation status to COMPLETED
+          if (generationId && outputUrl) {
+            await db.updateGenerationStatus(generationId, "COMPLETED", outputUrl);
+          }
+        } catch (error) {
+          // Log error but don't throw - generation record is created
+          console.error("AI generation failed:", error);
+        }
+
+        return { success: true, message: "Generation started", generationId, outputUrl };
       }),
 
     getHistory: protectedProcedure

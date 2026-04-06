@@ -16,19 +16,24 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [mobile, setMobile] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
 
-  // Get query param to determine which tab to show
+  // Get query params
   const urlParams = new URLSearchParams(window.location.search);
+  const refCode = urlParams.get("ref");
   const initialTab = urlParams.get("tab") === "signup" ? "signup" : "login";
+
+  // tRPC mutations
+  const loginMutation = trpc.auth.emailLogin.useMutation();
+  const registerMutation = trpc.auth.emailRegister.useMutation();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
     try {
       // Validate inputs
@@ -43,27 +48,25 @@ export default function Login() {
         return;
       }
 
-      if (password.length < 8) {
-        setError("Password must be at least 8 characters");
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters");
         return;
       }
 
-      // Call login API (placeholder - will be implemented with real auth)
-      toast.success("Login functionality coming soon - use OAuth for now");
-      
-      // Redirect to OAuth login
-      // window.location.href = getLoginUrl("/dashboard");
+      // Call login mutation
+      await loginMutation.mutateAsync({ email, password });
+      toast.success("Login successful!");
+      window.location.href = "/dashboard";
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setLoading(false);
+      const message = err instanceof Error ? err.message : "Login failed";
+      setError(message);
+      toast.error(message);
     }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
 
     try {
       // Validate inputs
@@ -83,8 +86,8 @@ export default function Login() {
         return;
       }
 
-      if (password.length < 8) {
-        setError("Password must be at least 8 characters");
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters");
         return;
       }
 
@@ -93,15 +96,19 @@ export default function Login() {
         return;
       }
 
-      // Call signup API (placeholder - will be implemented with real auth)
-      toast.success("Sign up functionality coming soon - use OAuth for now");
-      
-      // Redirect to OAuth login
-      // window.location.href = getLoginUrl("/dashboard");
+      // Call register mutation
+      await registerMutation.mutateAsync({
+        email,
+        password,
+        name,
+        referredBy: refCode || undefined,
+      });
+      toast.success("Account created successfully!");
+      window.location.href = "/dashboard";
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign up failed");
-    } finally {
-      setLoading(false);
+      const message = err instanceof Error ? err.message : "Sign up failed";
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -180,29 +187,11 @@ export default function Login() {
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={loginMutation.isPending}
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  {loginMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   Login
-                </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-purple-700"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-purple-950/50 text-purple-400">Or continue with</span>
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full border-purple-600 text-purple-200 hover:bg-purple-900/50"
-                  onClick={() => toast.info("OAuth login coming soon")}
-                >
-                  OAuth Login
                 </Button>
               </form>
             </TabsContent>
@@ -228,7 +217,22 @@ export default function Login() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="bg-purple-900/30 border-purple-600 text-white placeholder:text-purple-400"
-                    disabled={loading}
+                    disabled={loginMutation.isPending || registerMutation.isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-mobile" className="text-purple-200">
+                    Mobile (Optional)
+                  </Label>
+                  <Input
+                    id="signup-mobile"
+                    type="tel"
+                    placeholder="+91 98765 43210"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    className="bg-purple-900/30 border-purple-600 text-white placeholder:text-purple-400"
+                    disabled={loginMutation.isPending || registerMutation.isPending}
                   />
                 </div>
 
@@ -245,7 +249,7 @@ export default function Login() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-10 bg-purple-900/30 border-purple-600 text-white placeholder:text-purple-400"
-                      disabled={loading}
+                      disabled={loginMutation.isPending || registerMutation.isPending}
                     />
                   </div>
                 </div>
@@ -263,7 +267,7 @@ export default function Login() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-10 pr-10 bg-purple-900/30 border-purple-600 text-white placeholder:text-purple-400"
-                      disabled={loading}
+                      disabled={loginMutation.isPending || registerMutation.isPending}
                     />
                     <button
                       type="button"
@@ -288,44 +292,24 @@ export default function Login() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="pl-10 pr-10 bg-purple-900/30 border-purple-600 text-white placeholder:text-purple-400"
-                      disabled={loading}
+                      disabled={loginMutation.isPending || registerMutation.isPending}
                     />
                   </div>
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={registerMutation.isPending}
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  {registerMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   Create Account
-                </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-purple-700"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-purple-950/50 text-purple-400">Or sign up with</span>
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full border-purple-600 text-purple-200 hover:bg-purple-900/50"
-                  onClick={() => toast.info("OAuth signup coming soon")}
-                >
-                  OAuth Sign Up
                 </Button>
               </form>
             </TabsContent>
           </Tabs>
 
-          <p className="text-xs text-center text-purple-400 mt-4">
-            By signing up, you agree to our Terms of Service and Privacy Policy
-          </p>
+
         </CardContent>
       </Card>
     </div>

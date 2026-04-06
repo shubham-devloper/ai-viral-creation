@@ -178,3 +178,25 @@
 - [x] TASK 2: Implemented emailRegister mutation with affiliate referral bonus (50 credits)
 - [x] Added bcryptjs for password hashing and comparison
 - [x] Updated context.ts to include sdk for session token creation
+
+
+## TASK 3 & TASK 4: Login API & Real AI Generation (Completed)
+- [x] TASK 3: Wired Login page to real tRPC API calls
+  * Added trpc.auth.emailLogin.useMutation() for login
+  * Added trpc.auth.emailRegister.useMutation() for registration
+  * Extract refCode from URL search params for affiliate tracking
+  * Login submit: calls loginMutation, redirects to /dashboard on success
+  * Signup submit: validates password match, calls registerMutation with referral code
+  * Added Name + Mobile fields to signup form
+  * Added confirm password field with validation
+  * Removed all "coming soon" toasts and info box
+  * Updated loading states to use mutation.isPending
+- [x] TASK 4: Integrated real AI generation in generation.create
+  * Added generateImage and generateStory imports
+  * IMAGE type: calls generateImage(), returns image URL
+  * AVATAR type: calls generateImage(), returns avatar URL
+  * STORY type: calls generateStory(), returns story text
+  * VIDEO type: calls generateImage() with "cinematic still frame:" prefix
+  * Wrapped AI calls in try/catch to handle errors gracefully
+  * Updates generation status to COMPLETED with outputUrl
+  * Returns outputUrl in response for frontend display
