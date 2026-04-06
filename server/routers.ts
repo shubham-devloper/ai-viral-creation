@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
@@ -57,6 +58,112 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         return db.updateUserProfile(ctx.user!.id, input);
+      }),
+
+    emailLogin: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email(),
+          password: z.string().min(6),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserByEmail(input.email);
+        if (!user) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "User not found",
+          });
+        }
+
+        if (!user.password_hash) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This account was not created with email/password",
+          });
+        }
+
+        const passwordMatch = await bcrypt.compare(input.password, user.password_hash);
+        if (!passwordMatch) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Invalid password",
+          });
+        }
+
+        if (!user.is_active) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Account is inactive",
+          });
+        }
+
+        await db.updateLastSignedIn(user.id);
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        const sessionToken = await ctx.sdk.createSessionToken(user.openId);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, cookieOptions);
+
+        return { success: true, user };
+      }),
+
+    emailRegister: publicProcedure
+      .input(
+        z.object({
+          email: z.string().email(),
+          password: z.string().min(6),
+          name: z.string().optional(),
+          referredBy: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const existingUser = await db.getUserByEmail(input.email);
+        if (existingUser) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Email already registered",
+          });
+        }
+
+        const passwordHash = await bcrypt.hash(input.password, 10);
+        const openId = `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        await db.upsertUser({
+          openId,
+          email: input.email,
+          password_hash: passwordHash,
+          name: input.name || null,
+          loginMethod: "email",
+          is_active: true,
+          referred_by: input.referredBy || null,
+        });
+
+        // Get the newly created user
+        const newUser = await db.getUserByEmail(input.email);
+        if (!newUser) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create user",
+          });
+        }
+
+        // Create initial credits (10 free credits)
+        await db.getOrCreateCredits(newUser.id);
+
+        // Handle affiliate referral bonus
+        if (input.referredBy) {
+          const referrerAffiliate = await db.getAffiliateByCode(input.referredBy);
+          if (referrerAffiliate) {
+            // Add 50 credits to referrer
+            await db.updateCredits(referrerAffiliate.user_id, 50, "Referral bonus");
+          }
+        }
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        const sessionToken = await ctx.sdk.createSessionToken(openId);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, cookieOptions);
+
+        return { success: true, user: newUser };
       }),
   }),
 
@@ -205,11 +312,11 @@ export const appRouter = router({
           z.object({
             limit: z.number().default(50),
             offset: z.number().default(0),
-            status: z.enum(["PROCESSING", "COMPLETED", "FAILED"]).optional(),
+            filter: z.enum(["all", "flagged", "failed"]).optional(),
           })
         )
-        .query(async () => {
-          return [];
+        .query(async ({ input }) => {
+          return db.getAllGenerations(input.filter || "all", input.limit);
         }),
 
       updateStatus: adminProcedure

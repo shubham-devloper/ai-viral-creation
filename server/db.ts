@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, 
@@ -417,4 +417,37 @@ export async function updateUserProfile(userId: number, data: { name?: string; m
 
   await db.update(users).set(updateData).where(eq(users.id, userId));
   return getUserById(userId);
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0] || null;
+}
+
+export async function updateLastSignedIn(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const now = new Date();
+  await db.update(users).set({ lastSignedIn: now, updatedAt: now }).where(eq(users.id, userId));
+  return getUserById(userId);
+}
+
+export async function getAllGenerations(filter: "all" | "flagged" | "failed" = "all", limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+
+  let baseQuery = db.select().from(generations);
+
+  if (filter === "flagged") {
+    const result = await baseQuery.where(eq(generations.is_flagged, true)).orderBy(desc(generations.createdAt)).limit(limit);
+    return result;
+  } else if (filter === "failed") {
+    const result = await baseQuery.where(eq(generations.status, "FAILED")).orderBy(desc(generations.createdAt)).limit(limit);
+    return result;
+  } else {
+    const result = await baseQuery.orderBy(desc(generations.createdAt)).limit(limit);
+    return result;
+  }
 }

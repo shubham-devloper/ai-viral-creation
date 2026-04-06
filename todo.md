@@ -166,3 +166,15 @@
 - [x] GenerateVideo — refactored to match GenerateImage layout
 - [x] GenerateAvatar — refactored to match GenerateImage layout
 - [x] All generation pages now have consistent UI/UX with DashboardLayout
+
+
+## TASK 1 & TASK 2: Database Functions & Email Authentication (Completed)
+- [x] TASK 1: Added getUserByEmail(email) → returns user or null
+- [x] TASK 1: Added updateLastSignedIn(userId) → updates lastSignedIn and updatedAt
+- [x] TASK 1: Added getAllGenerations(filter, limit) → filters by flagged/failed status
+- [x] TASK 2: Fixed admin.users.list to use db.getAllUsers() with real data
+- [x] TASK 2: Fixed admin.generations.list to use db.getAllGenerations() with real data
+- [x] TASK 2: Implemented emailLogin mutation with bcrypt password verification
+- [x] TASK 2: Implemented emailRegister mutation with affiliate referral bonus (50 credits)
+- [x] Added bcryptjs for password hashing and comparison
+- [x] Updated context.ts to include sdk for session token creation
