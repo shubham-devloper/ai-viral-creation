@@ -212,3 +212,18 @@
   * Removed setTimeout with via.placeholder.com block
   * Same logic as TASK 5: check result.outputUrl
   * Display real avatar URL or direct user to History
+
+
+## TASK 7: Pricing Page with INR & Razorpay (Completed)
+- [x] Updated pricing: Starter ₹79, Pro ₹199, Enterprise ₹499
+- [x] Changed all $ to ₹ in display
+- [x] Implemented handleBuy function with authentication check
+- [x] Integrated Razorpay payment flow:
+  * Creates order via trpc.payment.createOrder
+  * Opens Razorpay checkout with order details
+  * Verifies payment via trpc.payment.verifyPayment
+  * Redirects to /dashboard/credits on success
+- [x] Added Razorpay checkout script to client/index.html
+- [x] Wired Buy buttons to handleBuy with plan ID and price
+- [x] Added loading state during payment processing
+- [x] Ready for Razorpay API keys (VITE_RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)

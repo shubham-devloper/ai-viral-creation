@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Zap, Star, Flame } from "lucide-react";
+import { Check, Zap, Star, Flame, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 interface PricingPlan {
   id: string;
@@ -23,8 +26,8 @@ const pricingPlans: PricingPlan[] = [
     id: "starter",
     name: "Starter",
     credits: 100,
-    price: 9.99,
-    pricePerCredit: 0.1,
+    price: 79,
+    pricePerCredit: 0.79,
     icon: <Zap className="w-6 h-6" />,
     popular: false,
     features: [
@@ -43,8 +46,8 @@ const pricingPlans: PricingPlan[] = [
     id: "pro",
     name: "Pro",
     credits: 500,
-    price: 39.99,
-    pricePerCredit: 0.08,
+    price: 199,
+    pricePerCredit: 0.398,
     icon: <Star className="w-6 h-6" />,
     popular: true,
     features: [
@@ -64,8 +67,8 @@ const pricingPlans: PricingPlan[] = [
     id: "enterprise",
     name: "Enterprise",
     credits: 2000,
-    price: 129.99,
-    pricePerCredit: 0.065,
+    price: 499,
+    pricePerCredit: 0.2495,
     icon: <Flame className="w-6 h-6" />,
     popular: false,
     features: [
@@ -95,16 +98,84 @@ const creditCosts = [
   { type: "Video (HD)", cost: 30 },
 ];
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 export default function Pricing() {
   const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const createOrderMutation = trpc.payment.createOrder.useMutation();
+  const verifyPaymentMutation = trpc.payment.verifyPayment.useMutation();
 
-  const handlePurchase = (planId: string) => {
+  const handleBuy = async (planId: string, price: number) => {
     if (!isAuthenticated) {
       setLocation("/login");
       return;
     }
-    setLocation("/dashboard/credits");
+
+    setIsProcessing(true);
+    try {
+      // Create order
+      const order = await createOrderMutation.mutateAsync({ packageId: planId });
+
+      if (!order.orderId) {
+        toast.error("Failed to create order");
+        return;
+      }
+
+      // Initialize Razorpay
+      const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
+      if (!razorpayKeyId) {
+        toast.error("Razorpay configuration missing");
+        return;
+      }
+
+      const options = {
+        key: razorpayKeyId,
+        amount: Math.round(price * 100), // Convert to paise
+        currency: "INR",
+        name: "AI Viral Creation",
+        description: `${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`,
+        order_id: order.orderId,
+        handler: async (response: any) => {
+          try {
+            // Verify payment
+            const result = await verifyPaymentMutation.mutateAsync({
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+            });
+
+            if (result.success) {
+              toast.success("Payment successful! Credits added.");
+              setLocation("/dashboard/credits");
+            } else {
+              toast.error("Payment verification failed");
+            }
+          } catch (error) {
+            toast.error("Payment verification failed");
+          }
+        },
+        prefill: {
+          email: user?.email || "",
+          name: user?.name || "",
+        },
+        theme: {
+          color: "#9333ea",
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      toast.error("Failed to process payment");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -154,25 +225,27 @@ export default function Pricing() {
 
                 <div className="space-y-1">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">${plan.price}</span>
+                    <span className="text-4xl font-bold text-white">₹{plan.price}</span>
                     <span className="text-gray-400">/month</span>
                   </div>
                   <p className="text-sm text-gray-400">
-                    {plan.credits} credits • ${plan.pricePerCredit.toFixed(3)}/credit
+                    {plan.credits} credits • ₹{plan.pricePerCredit.toFixed(2)}/credit
                   </p>
                 </div>
               </CardHeader>
 
               <CardContent className="space-y-6">
                 <Button
-                  onClick={() => handlePurchase(plan.id)}
+                  onClick={() => handleBuy(plan.id, plan.price)}
+                  disabled={isProcessing}
                   className={`w-full ${
                     plan.popular
                       ? "bg-purple-600 hover:bg-purple-700"
                       : "bg-slate-700 hover:bg-slate-600"
-                  } text-white`}
+                  } text-white disabled:opacity-50`}
                 >
-                  Get {plan.name}
+                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Buy {plan.name}
                 </Button>
 
                 <ul className="space-y-3">
