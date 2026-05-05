@@ -561,6 +561,7 @@ export async function getGenerationTrends(days = 30) {
 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
 
   const result = await db.select({
     date: sql`DATE(${generations.createdAt})`,
@@ -568,7 +569,7 @@ export async function getGenerationTrends(days = 30) {
     type: generations.type,
   })
     .from(generations)
-    .where(sql`${generations.createdAt} >= ${startDate}`)
+    .where(sql`DATE(${generations.createdAt}) >= ${startDateStr}`)
     .groupBy(sql`DATE(${generations.createdAt}), ${generations.type}`)
     .orderBy(sql`DATE(${generations.createdAt})`);
 
@@ -581,6 +582,7 @@ export async function getRevenueMetrics(days = 30) {
 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString();
 
   const result = await db.select({
     totalRevenue: sql`SUM(${transactions.amount_inr})`,
@@ -588,7 +590,7 @@ export async function getRevenueMetrics(days = 30) {
     avgTransactionValue: sql`AVG(${transactions.amount_inr})`,
   })
     .from(transactions)
-    .where(sql`${transactions.createdAt} >= ${startDate}`);
+    .where(sql`${transactions.createdAt} >= ${startDateStr}`);
 
   return {
     totalRevenue: result[0]?.totalRevenue || 0,
