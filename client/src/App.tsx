@@ -26,6 +26,8 @@ import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AffiliateDashboard from "./pages/AffiliateDashboard";
 import RemoveBackground from "./pages/RemoveBackground";
+import ContentModeration from "./pages/ContentModeration";
+import BatchGeneration from "./pages/BatchGeneration";
 
 function Router() {
   return (
@@ -43,7 +45,9 @@ function Router() {
       <Route path={"dashboard/generate-video"} component={() => <ProtectedRoute component={GenerateVideo} />} />
       <Route path={"dashboard/affiliate"} component={() => <ProtectedRoute component={AffiliateDashboard} />} />
       <Route path={"dashboard/remove-background"} component={() => <ProtectedRoute component={RemoveBackground} />} />
+      <Route path={"dashboard/batch-generation"} component={() => <ProtectedRoute component={BatchGeneration} />} />
       <Route path={"/admin"} component={() => <ProtectedRoute component={AdminDashboard} isAdmin />} />
+      <Route path={"/admin/moderation"} component={() => <ProtectedRoute component={ContentModeration} isAdmin />} />
       <Route path={"/admin/users"} component={() => <ProtectedRoute component={AdminUsers} isAdmin />} />
       <Route path={"/admin/generations"} component={() => <ProtectedRoute component={AdminGenerations} isAdmin />} />
       <Route path={"/admin/settings"} component={() => <ProtectedRoute component={AdminSettings} isAdmin />} />

@@ -254,3 +254,41 @@
 - [x] Update RecentCreations component to support BGREMOVE type
 - [x] Wire Remove Background button to trpc.generation.create mutation
 - [x] All 274 tests passing, zero TypeScript errors
+
+
+## Content Moderation Dashboard & Batch Generation (Completed)
+- [x] Add user_violations table to database schema
+- [x] Generate and apply migration SQL for user_violations
+- [x] Create ContentModeration.tsx page with flagged content review
+  * Displays flagged generations with thumbnails
+  * Filter by status (all, pending, approved, rejected)
+  * Admin notes textarea for review comments
+  * Approve, Reject, and Warn User buttons
+  * User violation tracking and suspension
+- [x] Implement moderation database functions in db.ts
+  * getFlaggedGenerations() - query flagged content
+  * approveGeneration() - approve and clear flag
+  * rejectGeneration() - reject and mark failed
+  * warnUser() - create violation record
+  * suspendUser() - deactivate user account
+- [x] Add moderation mutations to admin router
+  * getFlaggedGenerations query
+  * approveGeneration mutation
+  * rejectGeneration mutation
+  * warnUser mutation
+  * suspendUser mutation
+- [x] Create BatchGeneration.tsx page for bulk generation
+  * Multi-prompt input with add/remove functionality
+  * Type selection (Image, Avatar)
+  * Quality selection (Standard, HD)
+  * Real-time cost calculation
+  * Sequential generation with progress tracking
+  * Before/after status display for each item
+  * Download links for completed items
+- [x] Add routes to App.tsx
+  * /dashboard/batch-generation for users
+  * /admin/moderation for admins
+- [x] Add menu items to DashboardLayout
+  * Batch Generation in user sidebar
+  * Content Moderation in admin sidebar
+- [x] All 274 tests passing, zero TypeScript errors

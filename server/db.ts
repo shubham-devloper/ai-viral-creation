@@ -12,7 +12,8 @@ import {
   articles,
   policies,
   admin_config,
-  user_api_keys
+  user_api_keys,
+  user_violations
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -450,4 +451,104 @@ export async function getAllGenerations(filter: "all" | "flagged" | "failed" = "
     const result = await baseQuery.orderBy(desc(generations.createdAt)).limit(limit);
     return result;
   }
+}
+
+
+// Moderation functions
+export async function getFlaggedGenerations(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select()
+    .from(generations)
+    .where(eq(generations.is_flagged, true))
+    .orderBy(desc(generations.createdAt))
+    .limit(limit);
+}
+
+export async function approveGeneration(generationId: number, adminId: number, adminNotes?: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  // Update generation to not flagged
+  await db.update(generations)
+    .set({ is_flagged: false, flag_reason: null })
+    .where(eq(generations.id, generationId));
+
+  // Create violation record with APPROVED status
+  return db.insert(user_violations).values({
+    generation_id: generationId,
+    user_id: 0, // Will be fetched from generation
+    violation_type: "OTHER",
+    status: "APPROVED",
+    admin_notes: adminNotes,
+    reviewed_by: adminId,
+    reviewed_at: new Date(),
+  });
+}
+
+export async function rejectGeneration(generationId: number, adminId: number, reason: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  // Get generation to find user_id
+  const gen = await db.select().from(generations).where(eq(generations.id, generationId)).limit(1);
+  if (!gen.length) return undefined;
+
+  // Update generation status to FAILED
+  await db.update(generations)
+    .set({ status: "FAILED", flag_reason: reason })
+    .where(eq(generations.id, generationId));
+
+  // Create violation record with REJECTED status
+  return db.insert(user_violations).values({
+    generation_id: generationId,
+    user_id: gen[0].user_id,
+    violation_type: "INAPPROPRIATE_CONTENT",
+    status: "REJECTED",
+    reason,
+    admin_notes: reason,
+    reviewed_by: adminId,
+    reviewed_at: new Date(),
+  });
+}
+
+export async function warnUser(userId: number, adminId: number, reason: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  // Create violation record for warning
+  return db.insert(user_violations).values({
+    generation_id: 0,
+    user_id: userId,
+    violation_type: "OTHER",
+    status: "PENDING",
+    reason,
+    warning_count: 1,
+    reviewed_by: adminId,
+    reviewed_at: new Date(),
+  });
+}
+
+export async function suspendUser(userId: number, adminId: number, reason: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  // Deactivate user
+  await db.update(users)
+    .set({ is_active: false })
+    .where(eq(users.id, userId));
+
+  // Create violation record for suspension
+  return db.insert(user_violations).values({
+    generation_id: 0,
+    user_id: userId,
+    violation_type: "OTHER",
+    status: "REJECTED",
+    reason,
+    is_account_suspended: true,
+    suspension_reason: reason,
+    reviewed_by: adminId,
+    reviewed_at: new Date(),
+  });
 }

@@ -212,3 +212,27 @@ export const policies = mysqlTable("policies", {
 
 export type Policy = typeof policies.$inferSelect;
 export type InsertPolicy = typeof policies.$inferInsert;
+
+
+/**
+ * User Violations - tracks content moderation violations and warnings
+ */
+export const user_violations = mysqlTable("user_violations", {
+  id: int("id").autoincrement().primaryKey(),
+  user_id: int("user_id").notNull(),
+  generation_id: int("generation_id").notNull(),
+  violation_type: mysqlEnum("violation_type", ["INAPPROPRIATE_CONTENT", "HATE_SPEECH", "VIOLENCE", "SPAM", "COPYRIGHT", "OTHER"]).notNull(),
+  reason: text("reason"),
+  status: mysqlEnum("status", ["PENDING", "APPROVED", "REJECTED", "APPEALED"]).default("PENDING").notNull(),
+  admin_notes: text("admin_notes"),
+  warning_count: int("warning_count").default(0),
+  is_account_suspended: boolean("is_account_suspended").default(false),
+  suspension_reason: text("suspension_reason"),
+  reviewed_by: int("reviewed_by"), // admin user id
+  reviewed_at: timestamp("reviewed_at"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserViolation = typeof user_violations.$inferSelect;
+export type InsertUserViolation = typeof user_violations.$inferInsert;

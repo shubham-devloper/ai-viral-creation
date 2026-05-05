@@ -22,6 +22,13 @@
       "when": 1777980649008,
       "tag": "0002_pretty_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1777981056366,
+      "tag": "0003_heavy_scream",
+      "breakpoints": true
     }
   ]
 }

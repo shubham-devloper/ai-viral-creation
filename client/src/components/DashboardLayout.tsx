@@ -27,7 +27,7 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-import { Zap, History, Settings, Sparkles as SparklesIcon, Wand2, BookOpen, Users, Scissors } from "lucide-react";
+import { Zap, History, Settings, Sparkles as SparklesIcon, Wand2, BookOpen, Users, Scissors, Layers, AlertTriangle } from "lucide-react";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -36,6 +36,7 @@ const menuItems = [
   { icon: Users, label: "Generate Avatar", path: "/dashboard/generate-avatar" },
   { icon: SparklesIcon, label: "Generate Video", path: "/dashboard/generate-video" },
   { icon: Scissors, label: "Remove Background", path: "/dashboard/remove-background" },
+  { icon: Layers, label: "Batch Generation", path: "/dashboard/batch-generation" },
   { icon: Zap, label: "Credits", path: "/dashboard/credits" },
   { icon: History, label: "History", path: "/dashboard/history" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
@@ -45,6 +46,7 @@ const adminMenuItems = [
   { icon: LayoutDashboard, label: "Admin Dashboard", path: "/admin" },
   { icon: Users, label: "Users", path: "/admin/users" },
   { icon: SparklesIcon, label: "Generations", path: "/admin/generations" },
+  { icon: AlertTriangle, label: "Content Moderation", path: "/admin/moderation" },
   { icon: Settings, label: "Admin Settings", path: "/admin/settings" },
 ];
 

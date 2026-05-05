@@ -393,7 +393,41 @@ export const appRouter = router({
         .mutation(async ({ input }) => {
           return db.updateGenerationStatus(input.generationId, input.status);
         }),
-    })
+    }),
+
+    getFlaggedGenerations: adminProcedure
+      .input(z.object({ limit: z.number().default(100) }))
+      .query(async ({ input }) => {
+        return db.getFlaggedGenerations(input.limit);
+      }),
+
+    approveGeneration: adminProcedure
+      .input(z.object({ generationId: z.number(), adminNotes: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED" });
+        return db.approveGeneration(input.generationId, ctx.user.id, input.adminNotes);
+      }),
+
+    rejectGeneration: adminProcedure
+      .input(z.object({ generationId: z.number(), reason: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED" });
+        return db.rejectGeneration(input.generationId, ctx.user.id, input.reason);
+      }),
+
+    warnUser: adminProcedure
+      .input(z.object({ userId: z.number(), reason: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED" });
+        return db.warnUser(input.userId, ctx.user.id, input.reason);
+      }),
+
+    suspendUser: adminProcedure
+      .input(z.object({ userId: z.number(), reason: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED" });
+        return db.suspendUser(input.userId, ctx.user.id, input.reason);
+      })
   }),
 
   // Affiliate routes
