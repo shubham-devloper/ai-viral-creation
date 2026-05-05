@@ -186,7 +186,7 @@ export const appRouter = router({
     create: protectedProcedure
       .input(
         z.object({
-          type: z.enum(["IMAGE", "VIDEO", "STORY", "AVATAR"]),
+          type: z.enum(["IMAGE", "VIDEO", "STORY", "AVATAR", "BGREMOVE"]),
           prompt: z.string().min(10).max(2000),
           quality: z.enum(["standard", "hd"]).default("standard"),
         })
@@ -228,6 +228,7 @@ export const appRouter = router({
           VIDEO: { standard: 20, hd: 30 },
           STORY: { standard: 2, hd: 5 },
           AVATAR: { standard: 10, hd: 15 },
+          BGREMOVE: { standard: 3, hd: 3 },
         };
 
         const costRequired = creditCosts[input.type]?.[input.quality] ?? 5;
@@ -242,7 +243,7 @@ export const appRouter = router({
         // Create generation record
         const generationResult = await db.createGeneration({
           user_id: ctx.user!.id,
-          type: input.type as "IMAGE" | "VIDEO" | "STORY" | "AVATAR",
+          type: input.type as "IMAGE" | "VIDEO" | "STORY" | "AVATAR" | "BGREMOVE",
           prompt: input.prompt,
           quality: input.quality as "standard" | "hd",
           credits_used: costRequired,
@@ -267,6 +268,41 @@ export const appRouter = router({
             // For video, use image generation as fallback with cinematic prompt
             const result = await generateImage({ prompt: `cinematic still frame: ${input.prompt}` });
             outputUrl = result.url;
+          } else if (input.type === "BGREMOVE") {
+            // Call Remove.bg API to remove background from image URL
+            const removeBgApiKey = process.env.REMOVE_BG_API_KEY;
+            if (!removeBgApiKey) {
+              throw new Error("Remove.bg API key not configured");
+            }
+
+            const formData = new FormData();
+            formData.append("image_url", input.prompt);
+            formData.append("size", "auto");
+
+            const removeBgResponse = await fetch("https://api.remove.bg/v1.0/removebg", {
+              method: "POST",
+              headers: {
+                "X-Api-Key": removeBgApiKey,
+              },
+              body: formData,
+            });
+
+            if (!removeBgResponse.ok) {
+              throw new Error(`Remove.bg API error: ${removeBgResponse.statusText}`);
+            }
+
+            const result = await removeBgResponse.json();
+            if (result.result_b64) {
+              // Convert base64 to buffer and upload to S3
+              const buffer = Buffer.from(result.result_b64, "base64");
+              const { storagePut } = await import("./storage");
+              const storageResult = await storagePut(
+                `bgremove/${ctx.user!.id}-${Date.now()}.png`,
+                buffer,
+                "image/png"
+              );
+              outputUrl = storageResult.url;
+            }
           }
 
           // Update generation status to COMPLETED

@@ -1,0 +1,1 @@
+ALTER TABLE `generations` MODIFY COLUMN `type` enum('IMAGE','VIDEO','STORY','AVATAR','BGREMOVE') NOT NULL;

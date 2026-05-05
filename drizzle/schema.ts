@@ -80,7 +80,7 @@ export type InsertTransaction = typeof transactions.$inferInsert;
 export const generations = mysqlTable("generations", {
   id: int("id").autoincrement().primaryKey(),
   user_id: int("user_id").notNull(),
-  type: mysqlEnum("type", ["IMAGE", "VIDEO", "STORY", "AVATAR"]).notNull(),
+  type: mysqlEnum("type", ["IMAGE", "VIDEO", "STORY", "AVATAR", "BGREMOVE"]).notNull(),
   prompt: longtext("prompt").notNull(),
   output_url: text("output_url"),
   thumbnail_url: text("thumbnail_url"),

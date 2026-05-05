@@ -181,7 +181,7 @@ export async function getTransactionsByUser(userId: number, limit = 50) {
 // Generations functions
 export async function createGeneration(data: {
   user_id: number;
-  type: "IMAGE" | "VIDEO" | "STORY" | "AVATAR";
+  type: "IMAGE" | "VIDEO" | "STORY" | "AVATAR" | "BGREMOVE";
   prompt: string;
   credits_used: number;
   quality?: "standard" | "hd";

@@ -27,7 +27,7 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-import { Zap, History, Settings, Sparkles as SparklesIcon, Wand2, BookOpen, Users } from "lucide-react";
+import { Zap, History, Settings, Sparkles as SparklesIcon, Wand2, BookOpen, Users, Scissors } from "lucide-react";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -35,6 +35,7 @@ const menuItems = [
   { icon: BookOpen, label: "Generate Story", path: "/dashboard/generate-story" },
   { icon: Users, label: "Generate Avatar", path: "/dashboard/generate-avatar" },
   { icon: SparklesIcon, label: "Generate Video", path: "/dashboard/generate-video" },
+  { icon: Scissors, label: "Remove Background", path: "/dashboard/remove-background" },
   { icon: Zap, label: "Credits", path: "/dashboard/credits" },
   { icon: History, label: "History", path: "/dashboard/history" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },

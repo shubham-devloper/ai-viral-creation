@@ -42,7 +42,7 @@ import { toast } from "sonner";
 export interface Generation {
   id: number;
   user_id: number;
-  type: "IMAGE" | "VIDEO" | "STORY" | "AVATAR";
+  type: "IMAGE" | "VIDEO" | "STORY" | "AVATAR" | "BGREMOVE";
   prompt: string;
   output_url: string | null;
   thumbnail_url: string | null;
@@ -57,7 +57,7 @@ export interface Generation {
   updatedAt: Date;
 }
 
-type FilterType = "ALL" | "IMAGE" | "VIDEO" | "STORY" | "AVATAR";
+type FilterType = "ALL" | "IMAGE" | "VIDEO" | "STORY" | "AVATAR" | "BGREMOVE";
 type SortType = "newest" | "oldest" | "credits_high" | "credits_low";
 type ViewType = "grid" | "list";
 

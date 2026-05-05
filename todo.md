@@ -227,3 +227,30 @@
 - [x] Wired Buy buttons to handleBuy with plan ID and price
 - [x] Added loading state during payment processing
 - [x] Ready for Razorpay API keys (VITE_RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)
+
+
+## FEATURE 1: AI Background Remover (Completed)
+- [x] Add BGREMOVE type to database schema (drizzle/schema.ts)
+- [x] Generate migration SQL and apply to database
+- [x] Update createGeneration function to accept BGREMOVE type
+- [x] Add BGREMOVE credit cost (3 credits) to generation.create
+- [x] Implement Remove.bg API integration in generation.create
+  * POST to https://api.remove.bg/v1.0/removebg with image_url
+  * Extract result_b64 from response
+  * Convert base64 to buffer and upload to S3
+  * Return S3 URL as outputUrl
+- [x] Create RemoveBackground.tsx page with full UI
+  * Header with Scissors icon and subtitle
+  * Two tabs: Image URL input and file upload
+  * Drag-and-drop zone for file upload (max 5MB)
+  * Image preview before processing
+  * Before/after comparison view
+  * Download PNG button for result
+  * Use cases section (product photos, profile pictures, etc.)
+  * Credit cost card (3 credits)
+  * How-it-works info card
+- [x] Add RemoveBackground route to App.tsx with ProtectedRoute
+- [x] Add "Remove Background" menu item to DashboardLayout sidebar
+- [x] Update RecentCreations component to support BGREMOVE type
+- [x] Wire Remove Background button to trpc.generation.create mutation
+- [x] All 274 tests passing, zero TypeScript errors

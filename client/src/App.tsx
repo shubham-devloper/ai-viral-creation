@@ -25,6 +25,7 @@ import PolicyPage from "./pages/PolicyPage";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AffiliateDashboard from "./pages/AffiliateDashboard";
+import RemoveBackground from "./pages/RemoveBackground";
 
 function Router() {
   return (
@@ -41,6 +42,7 @@ function Router() {
       <Route path={"/dashboard/generate-avatar"} component={() => <ProtectedRoute component={GenerateAvatar} />} />
       <Route path={"dashboard/generate-video"} component={() => <ProtectedRoute component={GenerateVideo} />} />
       <Route path={"dashboard/affiliate"} component={() => <ProtectedRoute component={AffiliateDashboard} />} />
+      <Route path={"dashboard/remove-background"} component={() => <ProtectedRoute component={RemoveBackground} />} />
       <Route path={"/admin"} component={() => <ProtectedRoute component={AdminDashboard} isAdmin />} />
       <Route path={"/admin/users"} component={() => <ProtectedRoute component={AdminUsers} isAdmin />} />
       <Route path={"/admin/generations"} component={() => <ProtectedRoute component={AdminGenerations} isAdmin />} />
