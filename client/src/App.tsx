@@ -28,6 +28,7 @@ import AffiliateDashboard from "./pages/AffiliateDashboard";
 import RemoveBackground from "./pages/RemoveBackground";
 import ContentModeration from "./pages/ContentModeration";
 import BatchGeneration from "./pages/BatchGeneration";
+import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 
 function Router() {
   return (
@@ -47,6 +48,7 @@ function Router() {
       <Route path={"dashboard/remove-background"} component={() => <ProtectedRoute component={RemoveBackground} />} />
       <Route path={"dashboard/batch-generation"} component={() => <ProtectedRoute component={BatchGeneration} />} />
       <Route path={"/admin"} component={() => <ProtectedRoute component={AdminDashboard} isAdmin />} />
+      <Route path={"/admin/analytics"} component={() => <ProtectedRoute component={AnalyticsDashboard} isAdmin />} />
       <Route path={"/admin/moderation"} component={() => <ProtectedRoute component={ContentModeration} isAdmin />} />
       <Route path={"/admin/users"} component={() => <ProtectedRoute component={AdminUsers} isAdmin />} />
       <Route path={"/admin/generations"} component={() => <ProtectedRoute component={AdminGenerations} isAdmin />} />

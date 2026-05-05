@@ -292,3 +292,37 @@
   * Batch Generation in user sidebar
   * Content Moderation in admin sidebar
 - [x] All 274 tests passing, zero TypeScript errors
+
+
+## Advanced Analytics Dashboard (Completed)
+- [x] Add analytics database functions to db.ts
+  * getGenerationTrends() - track generations by date and type
+  * getRevenueMetrics() - total revenue, transactions, average value
+  * getTopUsers() - top users by generation count
+  * getGenerationStats() - total and breakdown by type/status
+  * getUserStats() - total, active, verified, admin users
+  * getCreditMetrics() - total purchased, used, available
+  * getAffiliateMetrics() - affiliates, referrals, commissions
+- [x] Create analytics tRPC queries in admin router
+  * trends query with configurable days
+  * revenue query with configurable days
+  * topUsers query with configurable limit
+  * generationStats query
+  * userStats query
+  * creditMetrics query
+  * affiliateMetrics query
+- [x] Build AnalyticsDashboard.tsx page with:
+  * Key metrics cards (Users, Generations, Revenue, Credits)
+  * Date range selector (7, 30, 90 days)
+  * Generation trends line chart
+  * Top users bar chart
+  * Generations by type pie chart
+  * Generations by status pie chart
+  * Affiliate program metrics
+  * User breakdown statistics
+  * Credit system statistics
+  * Revenue summary card
+  * Interactive Recharts visualizations
+- [x] Add route to App.tsx (/admin/analytics)
+- [x] Add Analytics menu item to DashboardLayout sidebar
+- [x] All 274 tests passing, zero TypeScript errors

@@ -552,3 +552,145 @@ export async function suspendUser(userId: number, adminId: number, reason: strin
     reviewed_at: new Date(),
   });
 }
+
+
+// Analytics functions
+export async function getGenerationTrends(days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const result = await db.select({
+    date: sql`DATE(${generations.createdAt})`,
+    count: sql`COUNT(*)`,
+    type: generations.type,
+  })
+    .from(generations)
+    .where(sql`${generations.createdAt} >= ${startDate}`)
+    .groupBy(sql`DATE(${generations.createdAt}), ${generations.type}`)
+    .orderBy(sql`DATE(${generations.createdAt})`);
+
+  return result;
+}
+
+export async function getRevenueMetrics(days = 30) {
+  const db = await getDb();
+  if (!db) return { totalRevenue: 0, totalTransactions: 0, avgTransactionValue: 0 };
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const result = await db.select({
+    totalRevenue: sql`SUM(${transactions.amount_inr})`,
+    totalTransactions: sql`COUNT(*)`,
+    avgTransactionValue: sql`AVG(${transactions.amount_inr})`,
+  })
+    .from(transactions)
+    .where(sql`${transactions.createdAt} >= ${startDate}`);
+
+  return {
+    totalRevenue: result[0]?.totalRevenue || 0,
+    totalTransactions: result[0]?.totalTransactions || 0,
+    avgTransactionValue: result[0]?.avgTransactionValue || 0,
+  };
+}
+
+export async function getTopUsers(limit = 10) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select({
+    userId: users.id,
+    name: users.name,
+    email: users.email,
+    generationCount: sql`COUNT(${generations.id})`,
+    creditsUsed: sql`SUM(${generations.credits_used})`,
+  })
+    .from(users)
+    .leftJoin(generations, eq(users.id, generations.user_id))
+    .groupBy(users.id)
+    .orderBy(sql`COUNT(${generations.id}) DESC`)
+    .limit(limit);
+}
+
+export async function getGenerationStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, byType: {}, byStatus: {} };
+
+  const total = await db.select({ count: sql`COUNT(*)` }).from(generations);
+
+  const byType = await db.select({
+    type: generations.type,
+    count: sql`COUNT(*)`,
+  })
+    .from(generations)
+    .groupBy(generations.type);
+
+  const byStatus = await db.select({
+    status: generations.status,
+    count: sql`COUNT(*)`,
+  })
+    .from(generations)
+    .groupBy(generations.status);
+
+  return {
+    total: total[0]?.count || 0,
+    byType: Object.fromEntries(byType.map((t: any) => [t.type, t.count])),
+    byStatus: Object.fromEntries(byStatus.map((s: any) => [s.status, s.count])),
+  };
+}
+
+export async function getUserStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, active: 0, verified: 0, admins: 0 };
+
+  const total = await db.select({ count: sql`COUNT(*)` }).from(users);
+  const active = await db.select({ count: sql`COUNT(*)` }).from(users).where(eq(users.is_active, true));
+  const verified = await db.select({ count: sql`COUNT(*)` }).from(users).where(eq(users.is_verified, true));
+  const admins = await db.select({ count: sql`COUNT(*)` }).from(users).where(eq(users.role, "admin"));
+
+  return {
+    total: total[0]?.count || 0,
+    active: active[0]?.count || 0,
+    verified: verified[0]?.count || 0,
+    admins: admins[0]?.count || 0,
+  };
+}
+
+export async function getCreditMetrics() {
+  const db = await getDb();
+  if (!db) return { totalPurchased: 0, totalUsed: 0, totalAvailable: 0 };
+
+  const result = await db.select({
+    totalPurchased: sql`SUM(${credits.total_purchased})`,
+    totalUsed: sql`SUM(${credits.total_used})`,
+    totalAvailable: sql`SUM(${credits.balance})`,
+  })
+    .from(credits);
+
+  return {
+    totalPurchased: result[0]?.totalPurchased || 0,
+    totalUsed: result[0]?.totalUsed || 0,
+    totalAvailable: result[0]?.totalAvailable || 0,
+  };
+}
+
+export async function getAffiliateMetrics() {
+  const db = await getDb();
+  if (!db) return { totalAffiliates: 0, totalReferrals: 0, totalCommissions: 0 };
+
+  const affiliateCount = await db.select({ count: sql`COUNT(*)` }).from(affiliates);
+  const referralCount = await db.select({ count: sql`COUNT(*)` }).from(affiliate_referrals);
+  const commissionTotal = await db.select({
+    total: sql`SUM(${affiliate_referrals.commission_inr})`,
+  })
+    .from(affiliate_referrals);
+
+  return {
+    totalAffiliates: affiliateCount[0]?.count || 0,
+    totalReferrals: referralCount[0]?.count || 0,
+    totalCommissions: commissionTotal[0]?.total || 0,
+  };
+}

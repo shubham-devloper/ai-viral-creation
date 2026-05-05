@@ -335,6 +335,42 @@ export const appRouter = router({
       };
     }),
 
+    analytics: router({
+      trends: adminProcedure
+        .input(z.object({ days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getGenerationTrends(input.days);
+        }),
+
+      revenue: adminProcedure
+        .input(z.object({ days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getRevenueMetrics(input.days);
+        }),
+
+      topUsers: adminProcedure
+        .input(z.object({ limit: z.number().default(10) }))
+        .query(async ({ input }) => {
+          return db.getTopUsers(input.limit);
+        }),
+
+      generationStats: adminProcedure.query(async () => {
+        return db.getGenerationStats();
+      }),
+
+      userStats: adminProcedure.query(async () => {
+        return db.getUserStats();
+      }),
+
+      creditMetrics: adminProcedure.query(async () => {
+        return db.getCreditMetrics();
+      }),
+
+      affiliateMetrics: adminProcedure.query(async () => {
+        return db.getAffiliateMetrics();
+      }),
+    }),
+
     users: router({
       list: adminProcedure
         .input(
