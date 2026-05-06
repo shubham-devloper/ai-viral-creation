@@ -43,10 +43,10 @@ function Router() {
       <Route path={"/dashboard/generate-image"} component={() => <ProtectedRoute component={GenerateImage} />} />
       <Route path={"/dashboard/generate-story"} component={() => <ProtectedRoute component={GenerateStory} />} />
       <Route path={"/dashboard/generate-avatar"} component={() => <ProtectedRoute component={GenerateAvatar} />} />
-      <Route path={"dashboard/generate-video"} component={() => <ProtectedRoute component={GenerateVideo} />} />
-      <Route path={"dashboard/affiliate"} component={() => <ProtectedRoute component={AffiliateDashboard} />} />
-      <Route path={"dashboard/remove-background"} component={() => <ProtectedRoute component={RemoveBackground} />} />
-      <Route path={"dashboard/batch-generation"} component={() => <ProtectedRoute component={BatchGeneration} />} />
+      <Route path={"/dashboard/generate-video"} component={() => <ProtectedRoute component={GenerateVideo} />} />
+      <Route path={"/dashboard/affiliate"} component={() => <ProtectedRoute component={AffiliateDashboard} />} />
+      <Route path={"/dashboard/remove-background"} component={() => <ProtectedRoute component={RemoveBackground} />} />
+      <Route path={"/dashboard/batch-generation"} component={() => <ProtectedRoute component={BatchGeneration} />} />
       <Route path={"/admin"} component={() => <ProtectedRoute component={AdminDashboard} isAdmin />} />
       <Route path={"/admin/analytics"} component={() => <ProtectedRoute component={AnalyticsDashboard} isAdmin />} />
       <Route path={"/admin/moderation"} component={() => <ProtectedRoute component={ContentModeration} isAdmin />} />
