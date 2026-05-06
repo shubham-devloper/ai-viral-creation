@@ -13,7 +13,9 @@ import {
   policies,
   admin_config,
   user_api_keys,
-  user_violations
+  user_violations,
+  notFoundTracking,
+  InsertNotFoundTracking
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -891,3 +893,100 @@ export type WeeklyActiveUsersResult = Awaited<ReturnType<typeof getWeeklyActiveU
 export type MonthlyActiveUsersResult = Awaited<ReturnType<typeof getMonthlyActiveUsers>>;
 export type UserChurnRateResult = Awaited<ReturnType<typeof getUserChurnRate>>;
 export type CohortRetentionMatrixResult = Awaited<ReturnType<typeof getCohortRetentionMatrix>>;
+
+
+// 404 Tracking Analytics
+export async function track404(data: InsertNotFoundTracking): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot track 404: database not available");
+    return;
+  }
+
+  try {
+    await db.insert(notFoundTracking).values(data);
+  } catch (error) {
+    console.warn("[Database] Failed to track 404:", error);
+  }
+}
+
+export async function get404Stats(days = 30) {
+  const db = await getDb();
+  if (!db) return { total: 0, unique_paths: 0, top_paths: [] };
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    // Get total 404s
+    const totalResult = await db.select({
+      count: sql`COUNT(*) as total`,
+    })
+      .from(notFoundTracking)
+      .where(sql`DATE(${notFoundTracking.createdAt}) >= ${startDateStr}`);
+
+    const total = Number(totalResult[0]?.count || 0);
+
+    // Get unique paths
+    const uniquePathsResult = await db.select({
+      count: sql`COUNT(DISTINCT ${notFoundTracking.attempted_path}) as unique_paths`,
+    })
+      .from(notFoundTracking)
+      .where(sql`DATE(${notFoundTracking.createdAt}) >= ${startDateStr}`);
+
+    const unique_paths = Number(uniquePathsResult[0]?.count || 0);
+
+    // Get top 404 paths
+    const topPathsResult = await db.select({
+      path: notFoundTracking.attempted_path,
+      count: sql`COUNT(*) as hit_count`,
+    })
+      .from(notFoundTracking)
+      .where(sql`DATE(${notFoundTracking.createdAt}) >= ${startDateStr}`)
+      .groupBy(notFoundTracking.attempted_path)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(10);
+
+    const top_paths = topPathsResult.map((r: any) => ({
+      path: r.path,
+      hits: Number(r.hit_count || 0),
+    }));
+
+    return { total, unique_paths, top_paths };
+  } catch (error) {
+    console.warn("[Database] Failed to get 404 stats:", error);
+    return { total: 0, unique_paths: 0, top_paths: [] };
+  }
+}
+
+export async function get404ByPath(path: string, days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    const result = await db.select({
+      date: sql`DATE(${notFoundTracking.createdAt}) as date`,
+      count: sql`COUNT(*) as hit_count`,
+    })
+      .from(notFoundTracking)
+      .where(and(
+        sql`${notFoundTracking.attempted_path} = ${path}`,
+        sql`DATE(${notFoundTracking.createdAt}) >= ${startDateStr}`
+      ))
+      .groupBy(sql`DATE(${notFoundTracking.createdAt})`)
+      .orderBy(sql`DATE(${notFoundTracking.createdAt})`);
+
+    return result.map((r: any) => ({
+      date: r.date,
+      hits: Number(r.hit_count || 0),
+    }));
+  } catch (error) {
+    console.warn("[Database] Failed to get 404 by path:", error);
+    return [];
+  }
+}

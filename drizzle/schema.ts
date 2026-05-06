@@ -236,3 +236,20 @@ export const user_violations = mysqlTable("user_violations", {
 
 export type UserViolation = typeof user_violations.$inferSelect;
 export type InsertUserViolation = typeof user_violations.$inferInsert;
+
+
+/**
+ * 404 Tracking - tracks 404 errors for analytics and debugging
+ */
+export const notFoundTracking = mysqlTable("not_found_tracking", {
+  id: int("id").autoincrement().primaryKey(),
+  user_id: int("user_id"),
+  attempted_path: varchar("attempted_path", { length: 512 }).notNull(),
+  referrer: text("referrer"),
+  user_agent: text("user_agent"),
+  ip_address: varchar("ip_address", { length: 45 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type NotFoundTracking = typeof notFoundTracking.$inferSelect;
+export type InsertNotFoundTracking = typeof notFoundTracking.$inferInsert;

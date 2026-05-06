@@ -29,6 +29,13 @@
       "when": 1777981056366,
       "tag": "0003_heavy_scream",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1778046955176,
+      "tag": "0004_tired_champions",
+      "breakpoints": true
     }
   ]
 }

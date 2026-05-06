@@ -29,6 +29,7 @@ import RemoveBackground from "./pages/RemoveBackground";
 import ContentModeration from "./pages/ContentModeration";
 import BatchGeneration from "./pages/BatchGeneration";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import RouteDocumentation from "./pages/RouteDocumentation";
 
 function Router() {
   return (
@@ -53,6 +54,7 @@ function Router() {
       <Route path={"/admin/users"} component={() => <ProtectedRoute component={AdminUsers} isAdmin />} />
       <Route path={"/admin/generations"} component={() => <ProtectedRoute component={AdminGenerations} isAdmin />} />
       <Route path={"/admin/settings"} component={() => <ProtectedRoute component={AdminSettings} isAdmin />} />
+      <Route path={"/admin/routes"} component={() => <ProtectedRoute component={RouteDocumentation} isAdmin />} />
       <Route path={"/pricing"} component={Pricing} />
       <Route path={"/affiliate"} component={Affiliate} />
       <Route path={"/blog"} component={Blog} />

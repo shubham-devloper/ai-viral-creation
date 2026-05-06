@@ -1,10 +1,23 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Home } from "lucide-react";
 import { useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
 
 export default function NotFound() {
   const [, setLocation] = useLocation();
+  const track404Mutation = trpc.system.track404.useMutation();
+
+  useEffect(() => {
+    // Track the 404 error
+    const attemptedPath = window.location.pathname;
+    track404Mutation.mutate({
+      attempted_path: attemptedPath,
+      referrer: document.referrer || undefined,
+      user_agent: navigator.userAgent,
+    });
+  }, [track404Mutation]);
 
   const handleGoHome = () => {
     setLocation("/");
