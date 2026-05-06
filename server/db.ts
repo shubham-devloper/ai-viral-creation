@@ -696,3 +696,198 @@ export async function getAffiliateMetrics() {
     totalCommissions: commissionTotal[0]?.total || 0,
   };
 }
+
+
+// Daily Active Users (DAU) and Retention Analytics
+export async function getDailyActiveUsers(days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  // Use raw SQL to avoid GROUP BY issues with MySQL strict mode
+  const result = await db.execute(sql`
+    SELECT 
+      DATE(${generations.createdAt}) as date,
+      COUNT(DISTINCT ${generations.user_id}) as activeUsers,
+      COUNT(*) as generationCount
+    FROM ${generations}
+    WHERE DATE(${generations.createdAt}) >= ${startDateStr}
+    GROUP BY DATE(${generations.createdAt})
+    ORDER BY DATE(${generations.createdAt})
+  `);
+
+  return result as any[];
+}
+
+export async function getRetentionCohorts(days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get cohorts of users by signup date
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  const result = await db.select({
+    cohortDate: sql`DATE(${users.createdAt})`,
+    cohortSize: sql`COUNT(DISTINCT ${users.id})`,
+    activeInCohort: sql`COUNT(DISTINCT CASE WHEN DATE(${generations.createdAt}) >= DATE(${users.createdAt}) THEN ${generations.user_id} END)`,
+    generationsInCohort: sql`COUNT(${generations.id})`,
+  })
+    .from(users)
+    .leftJoin(generations, eq(users.id, generations.user_id))
+    .where(sql`DATE(${users.createdAt}) >= ${startDateStr}`)
+    .groupBy(sql`DATE(${users.createdAt})`)
+    .orderBy(sql`DATE(${users.createdAt}) DESC`);
+
+  return result;
+}
+
+export async function getUserRetentionByDay(days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  // Calculate retention: users who were active today and were also active in the past
+  // Use raw SQL to avoid GROUP BY issues with MySQL strict mode
+  const result = await db.execute(sql`
+    SELECT 
+      DATE(${generations.createdAt}) as date,
+      COUNT(DISTINCT CASE WHEN DATE(${users.createdAt}) = DATE(${generations.createdAt}) THEN ${generations.user_id} END) as newUsers,
+      COUNT(DISTINCT CASE WHEN DATE(${users.createdAt}) < DATE(${generations.createdAt}) THEN ${generations.user_id} END) as returningUsers,
+      COUNT(DISTINCT ${generations.user_id}) as totalActiveUsers
+    FROM ${generations}
+    LEFT JOIN ${users} ON ${generations.user_id} = ${users.id}
+    WHERE DATE(${generations.createdAt}) >= ${startDateStr}
+    GROUP BY DATE(${generations.createdAt})
+    ORDER BY DATE(${generations.createdAt})
+  `);
+
+  return result as any[];
+}
+
+export async function getWeeklyActiveUsers(weeks = 12) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - weeks * 7);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  // Use raw SQL to avoid GROUP BY issues
+  const result = await db.execute(sql`
+    SELECT 
+      CONCAT(YEAR(${generations.createdAt}), '-W', WEEK(${generations.createdAt})) as week,
+      COUNT(DISTINCT ${generations.user_id}) as activeUsers,
+      COUNT(*) as generationCount
+    FROM ${generations}
+    WHERE DATE(${generations.createdAt}) >= ${startDateStr}
+    GROUP BY YEAR(${generations.createdAt}), WEEK(${generations.createdAt})
+    ORDER BY YEAR(${generations.createdAt}), WEEK(${generations.createdAt})
+  `);
+
+  return result as any[];
+}
+
+export async function getMonthlyActiveUsers(months = 12) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - months);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  // Use raw SQL to avoid GROUP BY issues
+  const result = await db.execute(sql`
+    SELECT 
+      DATE_FORMAT(${generations.createdAt}, '%Y-%m') as month,
+      COUNT(DISTINCT ${generations.user_id}) as activeUsers,
+      COUNT(*) as generationCount,
+      COUNT(DISTINCT CASE WHEN DATE_FORMAT(${users.createdAt}, '%Y-%m') = DATE_FORMAT(${generations.createdAt}, '%Y-%m') THEN ${generations.user_id} END) as newUsers
+    FROM ${generations}
+    LEFT JOIN ${users} ON ${generations.user_id} = ${users.id}
+    WHERE DATE(${generations.createdAt}) >= ${startDateStr}
+    GROUP BY DATE_FORMAT(${generations.createdAt}, '%Y-%m')
+    ORDER BY DATE_FORMAT(${generations.createdAt}, '%Y-%m')
+  `);
+
+  return result as any[];
+}
+
+export async function getUserChurnRate(days = 30) {
+  const db = await getDb();
+  if (!db) return { churnRate: 0, activeUsers: 0, inactiveUsers: 0 };
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString();
+
+  // Users who were active in the period
+  const activeInPeriod = await db.select({ count: sql`COUNT(DISTINCT ${generations.user_id})` })
+    .from(generations)
+    .where(sql`${generations.createdAt} >= ${startDateStr}`);
+
+  // Users who were active but haven't been in the last 7 days
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString();
+
+  const churned = await db.select({ count: sql`COUNT(DISTINCT ${users.id})` })
+    .from(users)
+    .leftJoin(generations, eq(users.id, generations.user_id))
+    .where(and(
+      sql`${users.createdAt} < ${startDateStr}`,
+      sql`${generations.createdAt} IS NULL OR ${generations.createdAt} < ${sevenDaysAgoStr}`
+    ));
+
+  const totalUsers = await db.select({ count: sql`COUNT(*)` }).from(users);
+
+  const totalCount = Number(totalUsers[0]?.count) || 1;
+  const churnedCount = Number(churned[0]?.count) || 0;
+  const churnRate = totalCount ? churnedCount / totalCount : 0;
+
+  return {
+    churnRate: Math.round(churnRate * 100 * 100) / 100,
+    activeUsers: Number(activeInPeriod[0]?.count) || 0,
+    inactiveUsers: churnedCount,
+  };
+}
+
+export async function getCohortRetentionMatrix(days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  // Get users by signup cohort and their activity in subsequent days
+  const result = await db.select({
+    cohortDate: sql`DATE(${users.createdAt})`,
+    daysSinceSignup: sql`DATEDIFF(DATE(${generations.createdAt}), DATE(${users.createdAt}))`,
+    activeCount: sql`COUNT(DISTINCT ${generations.user_id})`,
+  })
+    .from(users)
+    .leftJoin(generations, eq(users.id, generations.user_id))
+    .where(sql`DATE(${users.createdAt}) >= ${startDateStr}`)
+    .groupBy(sql`DATE(${users.createdAt}), DATEDIFF(DATE(${generations.createdAt}), DATE(${users.createdAt}))`)
+    .orderBy(sql`DATE(${users.createdAt}), DATEDIFF(DATE(${generations.createdAt}), DATE(${users.createdAt}))`);
+
+  return result;
+}
+
+
+// Export types for testing
+export type DailyActiveUsersResult = Awaited<ReturnType<typeof getDailyActiveUsers>>;
+export type RetentionCohortsResult = Awaited<ReturnType<typeof getRetentionCohorts>>;
+export type UserRetentionByDayResult = Awaited<ReturnType<typeof getUserRetentionByDay>>;
+export type WeeklyActiveUsersResult = Awaited<ReturnType<typeof getWeeklyActiveUsers>>;
+export type MonthlyActiveUsersResult = Awaited<ReturnType<typeof getMonthlyActiveUsers>>;
+export type UserChurnRateResult = Awaited<ReturnType<typeof getUserChurnRate>>;
+export type CohortRetentionMatrixResult = Awaited<ReturnType<typeof getCohortRetentionMatrix>>;

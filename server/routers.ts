@@ -369,6 +369,48 @@ export const appRouter = router({
       affiliateMetrics: adminProcedure.query(async () => {
         return db.getAffiliateMetrics();
       }),
+
+      dailyActiveUsers: adminProcedure
+        .input(z.object({ days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getDailyActiveUsers(input.days);
+        }),
+
+      retentionCohorts: adminProcedure
+        .input(z.object({ days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getRetentionCohorts(input.days);
+        }),
+
+      userRetentionByDay: adminProcedure
+        .input(z.object({ days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getUserRetentionByDay(input.days);
+        }),
+
+      weeklyActiveUsers: adminProcedure
+        .input(z.object({ weeks: z.number().default(12) }))
+        .query(async ({ input }) => {
+          return db.getWeeklyActiveUsers(input.weeks);
+        }),
+
+      monthlyActiveUsers: adminProcedure
+        .input(z.object({ months: z.number().default(12) }))
+        .query(async ({ input }) => {
+          return db.getMonthlyActiveUsers(input.months);
+        }),
+
+      churnRate: adminProcedure
+        .input(z.object({ days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getUserChurnRate(input.days);
+        }),
+
+      cohortRetentionMatrix: adminProcedure
+        .input(z.object({ days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getCohortRetentionMatrix(input.days);
+        }),
     }),
 
     users: router({

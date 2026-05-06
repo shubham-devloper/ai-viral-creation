@@ -326,3 +326,10 @@
 - [x] Add route to App.tsx (/admin/analytics)
 - [x] Add Analytics menu item to DashboardLayout sidebar
 - [x] All 274 tests passing, zero TypeScript errors
+
+## Analytics Expansion: User Retention & DAU Metrics
+- [x] Add database functions for DAU and retention cohort calculations
+- [x] Create tRPC queries for retention and DAU metrics
+- [x] Update AnalyticsDashboard with retention and DAU charts
+- [x] Write tests for new metrics functionality
+- [x] Verify all tests pass and deploy

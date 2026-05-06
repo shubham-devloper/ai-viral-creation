@@ -18,13 +18,21 @@ export default function AnalyticsDashboard() {
   const userStatsQuery = trpc.admin.analytics.userStats.useQuery();
   const creditMetricsQuery = trpc.admin.analytics.creditMetrics.useQuery();
   const affiliateMetricsQuery = trpc.admin.analytics.affiliateMetrics.useQuery();
+  const dauQuery = trpc.admin.analytics.dailyActiveUsers.useQuery({ days });
+  const retentionQuery = trpc.admin.analytics.userRetentionByDay.useQuery({ days });
+  const weeklyQuery = trpc.admin.analytics.weeklyActiveUsers.useQuery({ weeks: Math.ceil(days / 7) });
+  const churnQuery = trpc.admin.analytics.churnRate.useQuery({ days });
 
   const isLoading =
     trendsQuery.isLoading ||
     revenueQuery.isLoading ||
     topUsersQuery.isLoading ||
     genStatsQuery.isLoading ||
-    userStatsQuery.isLoading;
+    userStatsQuery.isLoading ||
+    dauQuery.isLoading ||
+    retentionQuery.isLoading ||
+    weeklyQuery.isLoading ||
+    churnQuery.isLoading;
 
   // Format data for charts
   const trendData = (trendsQuery.data || []) as any[];
@@ -39,6 +47,10 @@ export default function AnalyticsDashboard() {
   const creditMetrics = creditMetricsQuery.data as any;
   const affiliateMetrics = affiliateMetricsQuery.data as any;
   const revenue = revenueQuery.data as any;
+  const dauData = (dauQuery.data || []) as any[];
+  const retentionData = (retentionQuery.data || []) as any[];
+  const weeklyData = (weeklyQuery.data || []) as any[];
+  const churnMetrics = churnQuery.data as any;
 
   // Prepare pie chart data
   const genTypeData: any[] = genStats?.byType
@@ -74,7 +86,7 @@ export default function AnalyticsDashboard() {
             <TrendingUp className="w-8 h-8 text-blue-400" />
             <h1 className="text-3xl font-bold text-white">Analytics Dashboard</h1>
           </div>
-          <p className="text-gray-400">Track generation trends, revenue, and user engagement</p>
+          <p className="text-gray-400">Track generation trends, revenue, user engagement, and retention metrics</p>
         </div>
 
         {/* Date Range Selector */}
@@ -273,6 +285,87 @@ export default function AnalyticsDashboard() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          {/* Daily Active Users */}
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white">Daily Active Users (DAU)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={dauData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="date" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #475569" }}
+                    labelStyle={{ color: "#fff" }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="activeUsers"
+                    stroke="#06b6d4"
+                    strokeWidth={2}
+                    dot={{ fill: "#06b6d4" }}
+                    name="Active Users"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* User Retention */}
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white">User Retention</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={retentionData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="date" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #475569" }}
+                    labelStyle={{ color: "#fff" }}
+                  />
+                  <Legend />
+                  <Bar dataKey="newUsers" fill="#10b981" name="New Users" />
+                  <Bar dataKey="returningUsers" fill="#8b5cf6" name="Returning Users" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Weekly Active Users */}
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white">Weekly Active Users (WAU)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="week" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #475569" }}
+                    labelStyle={{ color: "#fff" }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="activeUsers"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    dot={{ fill: "#f59e0b" }}
+                    name="Active Users"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Detailed Stats */}
@@ -325,7 +418,37 @@ export default function AnalyticsDashboard() {
             </CardContent>
           </Card>
 
-          {/* Credit Stats */}
+          {/* Churn Rate */}
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white">User Churn Rate</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-400">Churn Rate</p>
+                <p className="text-2xl font-bold text-red-400">
+                  {churnMetrics?.churnRate || 0}%
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Active Users</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {churnMetrics?.activeUsers || 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Inactive Users</p>
+                <p className="text-2xl font-bold text-yellow-400">
+                  {churnMetrics?.inactiveUsers || 0}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Detailed Stats - Part 2 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* User Stats */}
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
               <CardTitle className="text-white">Credit System</CardTitle>
@@ -351,36 +474,36 @@ export default function AnalyticsDashboard() {
               </div>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Revenue Summary */}
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
-          <CardHeader>
-            <CardTitle className="text-white">Revenue Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <p className="text-sm text-gray-400 mb-1">Total Revenue</p>
-                <p className="text-3xl font-bold text-green-400">
-                  ₹{Number(revenue?.totalRevenue || 0).toLocaleString()}
-                </p>
+          {/* Revenue Summary */}
+          <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
+            <CardHeader>
+              <CardTitle className="text-white">Revenue Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Total Revenue</p>
+                  <p className="text-2xl font-bold text-green-400">
+                    ₹{Number(revenue?.totalRevenue || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Transactions</p>
+                  <p className="text-2xl font-bold text-white">
+                    {revenue?.totalTransactions || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Avg Transaction</p>
+                  <p className="text-2xl font-bold text-blue-400">
+                    ₹{Number(revenue?.avgTransactionValue || 0).toLocaleString()}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-400 mb-1">Total Transactions</p>
-                <p className="text-3xl font-bold text-white">
-                  {revenue?.totalTransactions || 0}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400 mb-1">Average Transaction</p>
-                <p className="text-3xl font-bold text-blue-400">
-                  ₹{Number(revenue?.avgTransactionValue || 0).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </DashboardLayout>
   );
