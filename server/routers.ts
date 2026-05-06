@@ -411,6 +411,36 @@ export const appRouter = router({
         .query(async ({ input }) => {
           return db.getCohortRetentionMatrix(input.days);
         }),
+
+      routeMetrics: adminProcedure
+        .input(z.object({ route_path: z.string(), days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getRouteMetrics(input.route_path, input.days);
+        }),
+
+      allRouteMetrics: adminProcedure
+        .input(z.object({ days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getAllRouteMetrics(input.days);
+        }),
+
+      routePerformanceTrend: adminProcedure
+        .input(z.object({ route_path: z.string(), days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getRoutePerformanceTrend(input.route_path, input.days);
+        }),
+
+      slowRoutes: adminProcedure
+        .input(z.object({ threshold: z.number().default(2000), days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getSlowRoutes(input.threshold, input.days);
+        }),
+
+      highBounceRoutes: adminProcedure
+        .input(z.object({ threshold: z.number().default(50), days: z.number().default(30) }))
+        .query(async ({ input }) => {
+          return db.getHighBounceRoutes(input.threshold, input.days);
+        }),
     }),
 
     users: router({

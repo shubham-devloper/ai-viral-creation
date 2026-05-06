@@ -2,8 +2,9 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Shield, Lock, Globe } from "lucide-react";
+import { Search, Shield, Lock, Globe, TrendingUp, AlertTriangle, Zap } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { trpc } from "@/lib/trpc";
 
 interface RouteInfo {
   path: string;
@@ -64,6 +65,23 @@ const PROTECTION_ICONS: Record<string, React.ReactNode> = {
 export default function RouteDocumentation() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+
+  // Fetch performance metrics
+  const { data: allMetrics, isLoading: metricsLoading } = trpc.admin.analytics.allRouteMetrics.useQuery(
+    { days: 30 },
+    { enabled: true }
+  );
+
+  const { data: slowRoutes } = trpc.admin.analytics.slowRoutes.useQuery(
+    { threshold: 2000, days: 30 },
+    { enabled: true }
+  );
+
+  const { data: highBounceRoutes } = trpc.admin.analytics.highBounceRoutes.useQuery(
+    { threshold: 50, days: 30 },
+    { enabled: true }
+  );
 
   const filteredRoutes = useMemo(() => {
     return ROUTES.filter((route) => {
@@ -92,13 +110,25 @@ export default function RouteDocumentation() {
     };
   }, []);
 
+  const getMetricsForRoute = (path: string) => {
+    return allMetrics?.find((m: any) => m.route_path === path);
+  };
+
+  const isSlowRoute = (path: string) => {
+    return slowRoutes?.some((r: any) => r.route_path === path);
+  };
+
+  const isHighBounceRoute = (path: string) => {
+    return highBounceRoutes?.some((r: any) => r.route_path === path);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Route Documentation</h1>
-          <p className="text-gray-400">Complete map of all application routes with protection levels and descriptions</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Route Documentation & Performance</h1>
+          <p className="text-gray-400">Complete map of all application routes with real-time performance metrics</p>
         </div>
 
         {/* Stats */}
@@ -140,6 +170,49 @@ export default function RouteDocumentation() {
           </Card>
         </div>
 
+        {/* Performance Alerts */}
+        {(slowRoutes?.length || 0) > 0 && (
+          <Card className="bg-yellow-900/30 border-yellow-700">
+            <CardHeader>
+              <CardTitle className="text-yellow-300 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Slow Routes Detected
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {slowRoutes?.map((route: any) => (
+                  <div key={route.route_path} className="flex justify-between items-center text-sm">
+                    <span className="text-gray-300">{route.route_path}</span>
+                    <span className="text-yellow-300 font-semibold">{route.avg_load_time}ms avg</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {(highBounceRoutes?.length || 0) > 0 && (
+          <Card className="bg-orange-900/30 border-orange-700">
+            <CardHeader>
+              <CardTitle className="text-orange-300 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                High Bounce Rate Routes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {highBounceRoutes?.map((route: any) => (
+                  <div key={route.route_path} className="flex justify-between items-center text-sm">
+                    <span className="text-gray-300">{route.route_path}</span>
+                    <span className="text-orange-300 font-semibold">{route.bounce_rate}% bounce</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Search and Filter */}
         <div className="space-y-4">
           <div className="relative">
@@ -179,7 +252,7 @@ export default function RouteDocumentation() {
           </div>
         </div>
 
-        {/* Routes Table */}
+        {/* Routes Table with Metrics */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
             <CardTitle className="text-white">
@@ -187,85 +260,121 @@ export default function RouteDocumentation() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="text-left py-3 px-4 text-gray-400 font-semibold">Path</th>
-                    <th className="text-left py-3 px-4 text-gray-400 font-semibold">Component</th>
-                    <th className="text-left py-3 px-4 text-gray-400 font-semibold">Protection</th>
-                    <th className="text-left py-3 px-4 text-gray-400 font-semibold">Category</th>
-                    <th className="text-left py-3 px-4 text-gray-400 font-semibold">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRoutes.length > 0 ? (
-                    filteredRoutes.map((route, idx) => (
-                      <tr
-                        key={idx}
-                        className="border-b border-slate-700 hover:bg-slate-700/30 transition-colors"
-                      >
-                        <td className="py-3 px-4">
-                          <code className="bg-slate-900 text-purple-300 px-2 py-1 rounded text-xs">
-                            {route.path}
-                          </code>
-                        </td>
-                        <td className="py-3 px-4 text-gray-300">{route.component}</td>
-                        <td className="py-3 px-4">
-                          <Badge
-                            className={`${PROTECTION_COLORS[route.protection]} flex items-center gap-1 w-fit`}
-                          >
-                            {PROTECTION_ICONS[route.protection]}
-                            <span className="capitalize">{route.protection}</span>
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge className="bg-slate-700 text-gray-300 capitalize">
-                            {route.category}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-gray-400">{route.description}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-8 px-4 text-center text-gray-500">
-                        No routes match your search criteria
-                      </td>
+            {metricsLoading ? (
+              <div className="text-center py-8 text-gray-400">Loading performance metrics...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-700">
+                      <th className="text-left py-3 px-4 text-gray-400 font-semibold">Path</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-semibold">Component</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-semibold">Protection</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-semibold">Visits</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-semibold">Avg Load Time</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-semibold">Bounce Rate</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-semibold">Engagement</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredRoutes.length > 0 ? (
+                      filteredRoutes.map((route, idx) => {
+                        const metrics = getMetricsForRoute(route.path);
+                        const isSlow = isSlowRoute(route.path);
+                        const isHighBounce = isHighBounceRoute(route.path);
+
+                        return (
+                          <tr
+                            key={idx}
+                            className="border-b border-slate-700 hover:bg-slate-700/30 transition-colors"
+                          >
+                            <td className="py-3 px-4">
+                              <code className="bg-slate-900 text-purple-300 px-2 py-1 rounded text-xs">
+                                {route.path}
+                              </code>
+                            </td>
+                            <td className="py-3 px-4 text-gray-300">{route.component}</td>
+                            <td className="py-3 px-4">
+                              <Badge className={`${PROTECTION_COLORS[route.protection]} flex items-center gap-1 w-fit`}>
+                                {PROTECTION_ICONS[route.protection]}
+                                <span className="capitalize">{route.protection}</span>
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4">
+                              {metrics ? (
+                                <span className="text-blue-300 font-semibold">{metrics.total_visits}</span>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {metrics ? (
+                                <span className={isSlow ? "text-red-300 font-semibold" : "text-green-300"}>
+                                  {metrics.avg_load_time}ms
+                                </span>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {metrics ? (
+                                <span className={isHighBounce ? "text-orange-300 font-semibold" : "text-gray-300"}>
+                                  {metrics.bounce_rate}%
+                                </span>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {metrics ? (
+                                <span className="text-purple-300">{metrics.interaction_rate}%</span>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="py-8 px-4 text-center text-gray-500">
+                          No routes match your search criteria
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Legend */}
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
-            <CardTitle className="text-white">Protection Levels</CardTitle>
+            <CardTitle className="text-white">Metrics Legend</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-start gap-3">
-                <Globe className="w-5 h-5 text-green-400 mt-1" />
+                <Zap className="w-5 h-5 text-blue-400 mt-1" />
                 <div>
-                  <p className="font-semibold text-white">Public</p>
-                  <p className="text-sm text-gray-400">Accessible to anyone without authentication</p>
+                  <p className="font-semibold text-white">Visits</p>
+                  <p className="text-sm text-gray-400">Total page visits in last 30 days</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Lock className="w-5 h-5 text-blue-400 mt-1" />
+                <TrendingUp className="w-5 h-5 text-green-400 mt-1" />
                 <div>
-                  <p className="font-semibold text-white">Protected</p>
-                  <p className="text-sm text-gray-400">Requires user authentication to access</p>
+                  <p className="font-semibold text-white">Avg Load Time</p>
+                  <p className="text-sm text-gray-400">Average page load time in milliseconds</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-red-400 mt-1" />
+                <AlertTriangle className="w-5 h-5 text-orange-400 mt-1" />
                 <div>
-                  <p className="font-semibold text-white">Admin</p>
-                  <p className="text-sm text-gray-400">Restricted to admin users only</p>
+                  <p className="font-semibold text-white">Bounce Rate</p>
+                  <p className="text-sm text-gray-400">% of visits with no interaction</p>
                 </div>
               </div>
             </div>

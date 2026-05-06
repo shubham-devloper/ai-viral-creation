@@ -253,3 +253,25 @@ export const notFoundTracking = mysqlTable("not_found_tracking", {
 
 export type NotFoundTracking = typeof notFoundTracking.$inferSelect;
 export type InsertNotFoundTracking = typeof notFoundTracking.$inferInsert;
+
+
+/**
+ * Route Performance Tracking - tracks page load times and user engagement metrics
+ */
+export const routePerformance = mysqlTable("route_performance", {
+  id: int("id").autoincrement().primaryKey(),
+  route_path: varchar("route_path", { length: 512 }).notNull(),
+  user_id: int("user_id"),
+  page_load_time: int("page_load_time").notNull(), // milliseconds
+  time_on_page: int("time_on_page"), // milliseconds, null if still on page
+  bounce: boolean("bounce").default(false).notNull(), // true if user left without interaction
+  had_interaction: boolean("had_interaction").default(false).notNull(), // clicks, scrolls, etc
+  referrer: text("referrer"),
+  device_type: varchar("device_type", { length: 50 }), // mobile, tablet, desktop
+  browser: varchar("browser", { length: 100 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RoutePerformance = typeof routePerformance.$inferSelect;
+export type InsertRoutePerformance = typeof routePerformance.$inferInsert;

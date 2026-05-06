@@ -45,4 +45,42 @@ export const systemRouter = router({
       });
       return { success: true } as const;
     }),
+
+  trackPerformance: publicProcedure
+    .input(
+      z.object({
+        route_path: z.string().min(1, "route path is required"),
+        page_load_time: z.number().min(0),
+        referrer: z.string().optional(),
+        device_type: z.string().optional(),
+        browser: z.string().optional(),
+        recordId: z.number().optional(),
+        time_on_page: z.number().optional(),
+        had_interaction: z.boolean().optional(),
+        bounce: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // If recordId is provided, update existing record
+      if (input.recordId) {
+        await db.updateRouteEngagement(input.recordId, {
+          time_on_page: input.time_on_page,
+          had_interaction: input.had_interaction,
+          bounce: input.bounce,
+        });
+        return { success: true, recordId: input.recordId } as const;
+      }
+
+      // Otherwise create new record
+      const recordId = Math.floor(Math.random() * 1000000); // Temporary ID for client reference
+      await db.trackRoutePerformance({
+        route_path: input.route_path,
+        user_id: ctx.user?.id,
+        page_load_time: input.page_load_time,
+        referrer: input.referrer,
+        device_type: input.device_type,
+        browser: input.browser,
+      });
+      return { success: true, recordId } as const;
+    }),
 });

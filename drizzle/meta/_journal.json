@@ -36,6 +36,13 @@
       "when": 1778046955176,
       "tag": "0004_tired_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1778047249400,
+      "tag": "0005_slow_midnight",
+      "breakpoints": true
     }
   ]
 }

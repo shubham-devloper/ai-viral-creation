@@ -15,7 +15,9 @@ import {
   user_api_keys,
   user_violations,
   notFoundTracking,
-  InsertNotFoundTracking
+  InsertNotFoundTracking,
+  routePerformance,
+  InsertRoutePerformance
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -987,6 +989,217 @@ export async function get404ByPath(path: string, days = 30) {
     }));
   } catch (error) {
     console.warn("[Database] Failed to get 404 by path:", error);
+    return [];
+  }
+}
+
+
+// Route Performance Tracking
+export async function trackRoutePerformance(data: InsertRoutePerformance): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot track route performance: database not available");
+    return;
+  }
+
+  try {
+    await db.insert(routePerformance).values(data);
+  } catch (error) {
+    console.warn("[Database] Failed to track route performance:", error);
+  }
+}
+
+export async function updateRouteEngagement(
+  id: number,
+  data: { time_on_page?: number; had_interaction?: boolean; bounce?: boolean }
+): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot update route engagement: database not available");
+    return;
+  }
+
+  try {
+    await db.update(routePerformance).set(data).where(eq(routePerformance.id, id));
+  } catch (error) {
+    console.warn("[Database] Failed to update route engagement:", error);
+  }
+}
+
+export async function getRouteMetrics(route_path: string, days = 30) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    const result = await db.select({
+      total_visits: sql`COUNT(*) as total_visits`,
+      avg_load_time: sql`AVG(${routePerformance.page_load_time}) as avg_load_time`,
+      min_load_time: sql`MIN(${routePerformance.page_load_time}) as min_load_time`,
+      max_load_time: sql`MAX(${routePerformance.page_load_time}) as max_load_time`,
+      avg_time_on_page: sql`AVG(${routePerformance.time_on_page}) as avg_time_on_page`,
+      bounce_rate: sql`(SUM(CASE WHEN ${routePerformance.bounce} = true THEN 1 ELSE 0 END) / COUNT(*) * 100) as bounce_rate`,
+      interaction_rate: sql`(SUM(CASE WHEN ${routePerformance.had_interaction} = true THEN 1 ELSE 0 END) / COUNT(*) * 100) as interaction_rate`,
+      unique_users: sql`COUNT(DISTINCT ${routePerformance.user_id}) as unique_users`,
+    })
+      .from(routePerformance)
+      .where(and(
+        eq(routePerformance.route_path, route_path),
+        sql`DATE(${routePerformance.createdAt}) >= ${startDateStr}`
+      ));
+
+    if (result.length === 0) return null;
+
+    return {
+      total_visits: Number(result[0].total_visits || 0),
+      avg_load_time: Math.round(Number(result[0].avg_load_time || 0)),
+      min_load_time: Number(result[0].min_load_time || 0),
+      max_load_time: Number(result[0].max_load_time || 0),
+      avg_time_on_page: Math.round(Number(result[0].avg_time_on_page || 0)),
+      bounce_rate: Math.round(Number(result[0].bounce_rate || 0) * 100) / 100,
+      interaction_rate: Math.round(Number(result[0].interaction_rate || 0) * 100) / 100,
+      unique_users: Number(result[0].unique_users || 0),
+    };
+  } catch (error) {
+    console.warn("[Database] Failed to get route metrics:", error);
+    return null;
+  }
+}
+
+export async function getAllRouteMetrics(days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    const result = await db.select({
+      route_path: routePerformance.route_path,
+      total_visits: sql`COUNT(*) as total_visits`,
+      avg_load_time: sql`AVG(${routePerformance.page_load_time}) as avg_load_time`,
+      avg_time_on_page: sql`AVG(${routePerformance.time_on_page}) as avg_time_on_page`,
+      bounce_rate: sql`(SUM(CASE WHEN ${routePerformance.bounce} = true THEN 1 ELSE 0 END) / COUNT(*) * 100) as bounce_rate`,
+      interaction_rate: sql`(SUM(CASE WHEN ${routePerformance.had_interaction} = true THEN 1 ELSE 0 END) / COUNT(*) * 100) as interaction_rate`,
+      unique_users: sql`COUNT(DISTINCT ${routePerformance.user_id}) as unique_users`,
+    })
+      .from(routePerformance)
+      .where(sql`DATE(${routePerformance.createdAt}) >= ${startDateStr}`)
+      .groupBy(routePerformance.route_path)
+      .orderBy(sql`COUNT(*) DESC`);
+
+    return result.map((r: any) => ({
+      route_path: r.route_path,
+      total_visits: Number(r.total_visits || 0),
+      avg_load_time: Math.round(Number(r.avg_load_time || 0)),
+      avg_time_on_page: Math.round(Number(r.avg_time_on_page || 0)),
+      bounce_rate: Math.round(Number(r.bounce_rate || 0) * 100) / 100,
+      interaction_rate: Math.round(Number(r.interaction_rate || 0) * 100) / 100,
+      unique_users: Number(r.unique_users || 0),
+    }));
+  } catch (error) {
+    console.warn("[Database] Failed to get all route metrics:", error);
+    return [];
+  }
+}
+
+export async function getRoutePerformanceTrend(route_path: string, days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    const result = await db.select({
+      date: sql`DATE(${routePerformance.createdAt}) as date`,
+      visits: sql`COUNT(*) as visits`,
+      avg_load_time: sql`AVG(${routePerformance.page_load_time}) as avg_load_time`,
+      bounce_rate: sql`(SUM(CASE WHEN ${routePerformance.bounce} = true THEN 1 ELSE 0 END) / COUNT(*) * 100) as bounce_rate`,
+    })
+      .from(routePerformance)
+      .where(and(
+        eq(routePerformance.route_path, route_path),
+        sql`DATE(${routePerformance.createdAt}) >= ${startDateStr}`
+      ))
+      .groupBy(sql`DATE(${routePerformance.createdAt})`)
+      .orderBy(sql`DATE(${routePerformance.createdAt})`);
+
+    return result.map((r: any) => ({
+      date: r.date,
+      visits: Number(r.visits || 0),
+      avg_load_time: Math.round(Number(r.avg_load_time || 0)),
+      bounce_rate: Math.round(Number(r.bounce_rate || 0) * 100) / 100,
+    }));
+  } catch (error) {
+    console.warn("[Database] Failed to get route performance trend:", error);
+    return [];
+  }
+}
+
+export async function getSlowRoutes(threshold = 2000, days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    const result = await db.select({
+      route_path: routePerformance.route_path,
+      avg_load_time: sql`AVG(${routePerformance.page_load_time}) as avg_load_time`,
+      total_visits: sql`COUNT(*) as total_visits`,
+    })
+      .from(routePerformance)
+      .where(sql`DATE(${routePerformance.createdAt}) >= ${startDateStr}`)
+      .groupBy(routePerformance.route_path)
+      .having(sql`AVG(${routePerformance.page_load_time}) > ${threshold}`)
+      .orderBy(sql`AVG(${routePerformance.page_load_time}) DESC`);
+
+    return result.map((r: any) => ({
+      route_path: r.route_path,
+      avg_load_time: Math.round(Number(r.avg_load_time || 0)),
+      total_visits: Number(r.total_visits || 0),
+    }));
+  } catch (error) {
+    console.warn("[Database] Failed to get slow routes:", error);
+    return [];
+  }
+}
+
+export async function getHighBounceRoutes(threshold = 50, days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  const startDateStr = startDate.toISOString().split('T')[0];
+
+  try {
+    const result = await db.select({
+      route_path: routePerformance.route_path,
+      bounce_rate: sql`(SUM(CASE WHEN ${routePerformance.bounce} = true THEN 1 ELSE 0 END) / COUNT(*) * 100) as bounce_rate`,
+      total_visits: sql`COUNT(*) as total_visits`,
+    })
+      .from(routePerformance)
+      .where(sql`DATE(${routePerformance.createdAt}) >= ${startDateStr}`)
+      .groupBy(routePerformance.route_path)
+      .having(sql`(SUM(CASE WHEN ${routePerformance.bounce} = true THEN 1 ELSE 0 END) / COUNT(*) * 100) > ${threshold}`)
+      .orderBy(sql`(SUM(CASE WHEN ${routePerformance.bounce} = true THEN 1 ELSE 0 END) / COUNT(*) * 100) DESC`);
+
+    return result.map((r: any) => ({
+      route_path: r.route_path,
+      bounce_rate: Math.round(Number(r.bounce_rate || 0) * 100) / 100,
+      total_visits: Number(r.total_visits || 0),
+    }));
+  } catch (error) {
+    console.warn("[Database] Failed to get high bounce routes:", error);
     return [];
   }
 }
