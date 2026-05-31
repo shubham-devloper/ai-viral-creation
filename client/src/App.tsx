@@ -31,6 +31,8 @@ import BatchGeneration from "./pages/BatchGeneration";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import RouteDocumentation from "./pages/RouteDocumentation";
 import AdminArticles from "./pages/AdminArticles";
+import ArticleDetail from "./pages/ArticleDetail";
+import AdminCommentModeration from "./pages/AdminCommentModeration";
 
 function Router() {
   return (
@@ -57,10 +59,11 @@ function Router() {
       <Route path={"/admin/settings"} component={() => <ProtectedRoute component={AdminSettings} isAdmin />} />
       <Route path={"/admin/routes"} component={() => <ProtectedRoute component={RouteDocumentation} isAdmin />} />
       <Route path={"/admin/articles"} component={() => <ProtectedRoute component={AdminArticles} isAdmin />} />
+      <Route path={"/admin/comments"} component={() => <ProtectedRoute component={AdminCommentModeration} isAdmin />} />
       <Route path={"/pricing"} component={Pricing} />
       <Route path={"/affiliate"} component={Affiliate} />
       <Route path={"/blog"} component={Blog} />
-      <Route path={"/blog/:slug"} component={() => <div className="p-8 text-center">Article (Coming Soon)</div>} />
+      <Route path={"/blog/:slug"} component={ArticleDetail} />
       <Route path={"/policy/:type"} component={PolicyPage} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Calendar, User, ArrowRight } from "lucide-react";
+import { Search, Calendar, User, ArrowRight, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 
@@ -10,9 +10,16 @@ export default function Blog() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [useAdvancedSearch, setUseAdvancedSearch] = useState(false);
 
   // Fetch articles from tRPC
-  const { data: articles, isLoading } = trpc.public.articles.list.useQuery({ limit: 20 });
+  const { data: articles, isLoading } = trpc.public.articles.list.useQuery({ limit: 50 });
+
+  // Search articles if search term is provided
+  const { data: searchResults } = trpc.public.articles.search.useQuery(
+    { query: searchTerm, limit: 20 },
+    { enabled: useAdvancedSearch && searchTerm.length > 0 }
+  );
 
   // Extract unique categories
   const categories = useMemo(() => {
@@ -23,8 +30,14 @@ export default function Blog() {
 
   // Filter and sort articles
   const filteredArticles = useMemo(() => {
+    // Use search results if advanced search is active
+    if (useAdvancedSearch && searchResults) {
+      return searchResults;
+    }
+
     if (!articles) return [];
 
+    // Local filtering
     return articles
       .filter((article: any) => {
         const matchesSearch =
@@ -34,7 +47,7 @@ export default function Blog() {
         return matchesSearch && matchesCategory;
       })
       .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [articles, searchTerm, selectedCategory]);
+  }, [articles, searchTerm, selectedCategory, useAdvancedSearch, searchResults]);
 
   // Calculate read time (rough estimate: 200 words per minute)
   const getReadTime = (content: string) => {
@@ -80,16 +93,32 @@ export default function Blog() {
 
         {/* Search and Filters */}
         <div className="mb-12 space-y-4">
+          {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-3 w-5 h-5 text-gray-500" />
             <Input
               placeholder="Search articles..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setUseAdvancedSearch(e.target.value.length > 0);
+              }}
               className="pl-10 bg-slate-800 border-slate-700 text-white"
             />
+            {searchTerm && (
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setUseAdvancedSearch(false);
+                }}
+                className="absolute right-3 top-3 text-gray-500 hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
+          {/* Category Filters */}
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
               <Button
@@ -106,6 +135,13 @@ export default function Blog() {
               </Button>
             ))}
           </div>
+
+          {/* Search Info */}
+          {useAdvancedSearch && searchTerm && (
+            <div className="text-sm text-gray-400">
+              Found {filteredArticles.length} result{filteredArticles.length !== 1 ? "s" : ""} for "{searchTerm}"
+            </div>
+          )}
         </div>
 
         {/* Featured Article */}
@@ -192,7 +228,21 @@ export default function Blog() {
         {/* Empty state */}
         {filteredArticles.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">No articles found matching your search.</p>
+            <p className="text-gray-400 text-lg">
+              {searchTerm ? `No articles found matching "${searchTerm}".` : "No articles available."}
+            </p>
+            {searchTerm && (
+              <Button
+                onClick={() => {
+                  setSearchTerm("");
+                  setUseAdvancedSearch(false);
+                }}
+                variant="outline"
+                className="mt-4 border-slate-600 text-gray-400 hover:text-white"
+              >
+                Clear Search
+              </Button>
+            )}
           </div>
         )}
       </div>

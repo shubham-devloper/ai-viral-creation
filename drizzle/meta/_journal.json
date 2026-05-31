@@ -43,6 +43,13 @@
       "when": 1778047249400,
       "tag": "0005_slow_midnight",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1780221236171,
+      "tag": "0006_quiet_plazm",
+      "breakpoints": true
     }
   ]
 }

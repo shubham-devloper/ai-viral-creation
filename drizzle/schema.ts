@@ -275,3 +275,24 @@ export const routePerformance = mysqlTable("route_performance", {
 
 export type RoutePerformance = typeof routePerformance.$inferSelect;
 export type InsertRoutePerformance = typeof routePerformance.$inferInsert;
+
+
+/**
+ * Article Comments - user comments on blog articles with moderation
+ */
+export const articleComments = mysqlTable("article_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  article_id: int("article_id").notNull(),
+  user_id: int("user_id").notNull(),
+  content: text("content").notNull(),
+  parent_comment_id: int("parent_comment_id"), // for nested replies
+  is_approved: boolean("is_approved").default(false).notNull(), // moderation flag
+  is_spam: boolean("is_spam").default(false).notNull(),
+  admin_notes: text("admin_notes"),
+  reviewed_by: int("reviewed_by"), // admin user id who reviewed
+  reviewed_at: timestamp("reviewed_at"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ArticleComment = typeof articleComments.$inferSelect;
+export type InsertArticleComment = typeof articleComments.$inferInsert;

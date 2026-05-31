@@ -17,7 +17,9 @@ import {
   notFoundTracking,
   InsertNotFoundTracking,
   routePerformance,
-  InsertRoutePerformance
+  InsertRoutePerformance,
+  articleComments,
+  InsertArticleComment
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1219,4 +1221,143 @@ export async function getHighBounceRoutes(threshold = 50, days = 30) {
     console.warn("[Database] Failed to get high bounce routes:", error);
     return [];
   }
+}
+
+
+// Article Comments functions
+export async function getArticleComments(articleId: number, approvedOnly = true) {
+  const db = await getDb();
+  if (!db) return [];
+
+  let query = db.select()
+    .from(articleComments)
+    .where(eq(articleComments.article_id, articleId))
+    .orderBy(desc(articleComments.createdAt));
+
+  if (approvedOnly) {
+    query = db.select()
+      .from(articleComments)
+      .where(and(
+        eq(articleComments.article_id, articleId),
+        eq(articleComments.is_approved, true),
+        eq(articleComments.is_spam, false)
+      ))
+      .orderBy(desc(articleComments.createdAt));
+  }
+
+  return query;
+}
+
+export async function createComment(data: InsertArticleComment) {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  try {
+    const result = await db.insert(articleComments).values(data);
+    return result;
+  } catch (error) {
+    console.warn("[Database] Failed to create comment:", error);
+    return undefined;
+  }
+}
+
+export async function approveComment(commentId: number, adminId: number) {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    await db.update(articleComments)
+      .set({
+        is_approved: true,
+        reviewed_by: adminId,
+        reviewed_at: new Date()
+      })
+      .where(eq(articleComments.id, commentId));
+    return true;
+  } catch (error) {
+    console.warn("[Database] Failed to approve comment:", error);
+    return false;
+  }
+}
+
+export async function rejectComment(commentId: number, adminId: number, reason?: string) {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    await db.update(articleComments)
+      .set({
+        is_spam: true,
+        admin_notes: reason || "Rejected by moderator",
+        reviewed_by: adminId,
+        reviewed_at: new Date()
+      })
+      .where(eq(articleComments.id, commentId));
+    return true;
+  } catch (error) {
+    console.warn("[Database] Failed to reject comment:", error);
+    return false;
+  }
+}
+
+export async function getPendingComments(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select()
+    .from(articleComments)
+    .where(eq(articleComments.is_approved, false))
+    .orderBy(desc(articleComments.createdAt))
+    .limit(limit);
+}
+
+export async function searchArticles(query: string, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const searchTerm = `%${query}%`;
+  
+  return db.select()
+    .from(articles)
+    .where(and(
+      eq(articles.is_published, true),
+      or(
+        like(articles.title, searchTerm),
+        like(articles.excerpt, searchTerm),
+        like(articles.content, searchTerm)
+      )
+    ))
+    .orderBy(desc(articles.createdAt))
+    .limit(limit);
+}
+
+export async function getRelatedArticles(articleId: number, limit = 3) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get the current article to find related ones
+  const currentArticle = await db.select()
+    .from(articles)
+    .where(eq(articles.id, articleId))
+    .limit(1);
+
+  if (!currentArticle.length) return [];
+
+  const current = currentArticle[0];
+
+  // Find articles with similar titles or content
+  const searchTerm = `%${current.title.split(" ")[0]}%`;
+
+  return db.select()
+    .from(articles)
+    .where(and(
+      eq(articles.is_published, true),
+      or(
+        like(articles.title, searchTerm),
+        like(articles.excerpt, searchTerm)
+      )
+    ))
+    .orderBy(desc(articles.createdAt))
+    .limit(limit + 1)
+    .then((results: any[]) => results.filter((a: any) => a.id !== articleId).slice(0, limit));
 }

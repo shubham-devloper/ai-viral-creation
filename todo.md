@@ -361,3 +361,13 @@
 - [x] Update Blog component to use tRPC queries
 - [x] Add /admin/articles route and navigation
 - [x] Verify all tests pass and deploy (284 tests passing, zero TypeScript errors)
+
+
+## Blog Expansion: Article Details, Search & Comments
+- [x] Add comments table and full-text search index to database schema
+- [x] Create database functions for article retrieval, search, and comment management
+- [x] Add tRPC endpoints for article detail, search, and comment CRUD
+- [x] Build article detail page (/blog/:slug) with metadata and related articles
+- [x] Implement advanced search with full-text indexing and filters
+- [x] Create comment system UI with moderation and nested replies
+- [x] Verify all tests pass and deploy (284 tests passing, zero TypeScript errors)

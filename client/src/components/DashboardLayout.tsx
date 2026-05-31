@@ -27,7 +27,7 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-import { Zap, History, Settings, Sparkles as SparklesIcon, Wand2, BookOpen, Users, Scissors, Layers, AlertTriangle, BarChart3, Map, FileText } from "lucide-react";
+import { Zap, History, Settings, Sparkles as SparklesIcon, Wand2, BookOpen, Users, Scissors, Layers, AlertTriangle, BarChart3, Map, FileText, MessageSquare } from "lucide-react";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -49,6 +49,7 @@ const adminMenuItems = [
   { icon: SparklesIcon, label: "Generations", path: "/admin/generations" },
   { icon: AlertTriangle, label: "Content Moderation", path: "/admin/moderation" },
   { icon: FileText, label: "Articles", path: "/admin/articles" },
+  { icon: MessageSquare, label: "Comments", path: "/admin/comments" },
   { icon: Map, label: "Route Documentation", path: "/admin/routes" },
   { icon: Settings, label: "Admin Settings", path: "/admin/settings" },
 ];

@@ -510,6 +510,28 @@ export const appRouter = router({
         }),
     }),
 
+    comments: router({
+      pending: adminProcedure
+        .input(z.object({ limit: z.number().default(50) }))
+        .query(async ({ input }) => {
+          return db.getPendingComments(input.limit);
+        }),
+
+      approve: adminProcedure
+        .input(z.object({ commentId: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+          const success = await db.approveComment(input.commentId, ctx.user!.id);
+          return { success };
+        }),
+
+      reject: adminProcedure
+        .input(z.object({ commentId: z.number(), reason: z.string().optional() }))
+        .mutation(async ({ ctx, input }) => {
+          const success = await db.rejectComment(input.commentId, ctx.user!.id, input.reason);
+          return { success };
+        }),
+    }),
+
     generations: router({
       list: adminProcedure
         .input(
@@ -659,6 +681,51 @@ export const appRouter = router({
         .query(async ({ input }) => {
           return db.getPublishedArticles(input.limit, false);
         }),
+
+      detail: publicProcedure
+        .input(z.object({ slug: z.string() }))
+        .query(async ({ input }) => {
+          return db.getArticleBySlug(input.slug);
+        }),
+
+      search: publicProcedure
+        .input(z.object({ query: z.string().min(1), limit: z.number().default(20) }))
+        .query(async ({ input }) => {
+          return db.searchArticles(input.query, input.limit);
+        }),
+
+      related: publicProcedure
+        .input(z.object({ articleId: z.number(), limit: z.number().default(3) }))
+        .query(async ({ input }) => {
+          return db.getRelatedArticles(input.articleId, input.limit);
+        }),
+
+      comments: router({
+        list: publicProcedure
+          .input(z.object({ articleId: z.number() }))
+          .query(async ({ input }) => {
+            return db.getArticleComments(input.articleId, true);
+          }),
+
+        create: protectedProcedure
+          .input(
+            z.object({
+              article_id: z.number(),
+              content: z.string().min(1).max(1000),
+              parent_comment_id: z.number().optional(),
+            })
+          )
+          .mutation(async ({ ctx, input }) => {
+            return db.createComment({
+              article_id: input.article_id,
+              user_id: ctx.user!.id,
+              content: input.content,
+              parent_comment_id: input.parent_comment_id,
+              is_approved: false,
+              is_spam: false,
+            });
+          }),
+      }),
     }),
   }),
 });
