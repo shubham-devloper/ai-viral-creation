@@ -457,6 +457,38 @@ export const appRouter = router({
         }),
     }),
 
+    articles: router({
+      list: adminProcedure
+        .input(z.object({ limit: z.number().default(100) }))
+        .query(async ({ input }) => {
+          return db.getPublishedArticles(input.limit, true);
+        }),
+
+      create: adminProcedure
+        .input(
+          z.object({
+            title: z.string().min(1, "title is required"),
+            slug: z.string().min(1, "slug is required"),
+            content: z.string().min(1, "content is required"),
+            excerpt: z.string().optional(),
+            cover_image: z.string().optional(),
+            seo_title: z.string().optional(),
+            seo_desc: z.string().optional(),
+            is_published: z.boolean().default(false),
+          })
+        )
+        .mutation(async ({ input }) => {
+          return db.createOrUpdateArticle(input);
+        }),
+
+      delete: adminProcedure
+        .input(z.object({ slug: z.string().min(1, "slug is required") }))
+        .mutation(async ({ input }) => {
+          const success = await db.deleteArticle(input.slug);
+          return { success };
+        }),
+    }),
+
     config: router({
       set: adminProcedure
         .input(
@@ -618,6 +650,16 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return db.getUserById(ctx.user!.id);
       }),
+  }),
+
+  public: router({
+    articles: router({
+      list: publicProcedure
+        .input(z.object({ limit: z.number().default(20) }))
+        .query(async ({ input }) => {
+          return db.getPublishedArticles(input.limit, false);
+        }),
+    }),
   }),
 });
 

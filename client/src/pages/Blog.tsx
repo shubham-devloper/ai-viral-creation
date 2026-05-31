@@ -1,114 +1,71 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Calendar, User, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
-
-interface BlogArticle {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  author: string;
-  date: string;
-  category: string;
-  image: string;
-  readTime: number;
-  slug: string;
-}
-
-const articles: BlogArticle[] = [
-  {
-    id: "1",
-    title: "How AI is Revolutionizing Content Creation",
-    excerpt: "Discover how artificial intelligence is transforming the way creators produce content at scale.",
-    content: "Full article content here...",
-    author: "Sarah Chen",
-    date: "2026-03-28",
-    category: "AI Trends",
-    image: "https://via.placeholder.com/600x400?text=AI+Content",
-    readTime: 5,
-    slug: "how-ai-revolutionizing-content",
-  },
-  {
-    id: "2",
-    title: "10 Tips for Creating Viral Images with AI",
-    excerpt: "Learn the best practices for generating eye-catching images that get engagement.",
-    content: "Full article content here...",
-    author: "Mike Johnson",
-    date: "2026-03-25",
-    category: "Tips & Tricks",
-    image: "https://via.placeholder.com/600x400?text=Viral+Images",
-    readTime: 7,
-    slug: "10-tips-viral-images",
-  },
-  {
-    id: "3",
-    title: "The Future of Video Generation",
-    excerpt: "Explore the latest advancements in AI video generation and what's coming next.",
-    content: "Full article content here...",
-    author: "Emma Wilson",
-    date: "2026-03-20",
-    category: "Technology",
-    image: "https://via.placeholder.com/600x400?text=Video+Generation",
-    readTime: 8,
-    slug: "future-video-generation",
-  },
-  {
-    id: "4",
-    title: "Maximizing Your Content ROI with AI Tools",
-    excerpt: "Strategic guide to using AI tools to increase your content marketing ROI.",
-    content: "Full article content here...",
-    author: "David Lee",
-    date: "2026-03-18",
-    category: "Business",
-    image: "https://via.placeholder.com/600x400?text=Content+ROI",
-    readTime: 6,
-    slug: "maximizing-content-roi",
-  },
-  {
-    id: "5",
-    title: "Understanding AI Image Styles and Prompts",
-    excerpt: "Deep dive into different art styles and how to craft effective prompts.",
-    content: "Full article content here...",
-    author: "Lisa Zhang",
-    date: "2026-03-15",
-    category: "Tutorials",
-    image: "https://via.placeholder.com/600x400?text=Image+Styles",
-    readTime: 9,
-    slug: "ai-image-styles-prompts",
-  },
-  {
-    id: "6",
-    title: "Case Study: From Zero to 100K Followers",
-    excerpt: "Real story of how creators used AI to grow their audience exponentially.",
-    content: "Full article content here...",
-    author: "James Brown",
-    date: "2026-03-12",
-    category: "Case Studies",
-    image: "https://via.placeholder.com/600x400?text=Growth+Story",
-    readTime: 10,
-    slug: "case-study-growth",
-  },
-];
+import { trpc } from "@/lib/trpc";
 
 export default function Blog() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", ...Array.from(new Set(articles.map((a) => a.category)))];
+  // Fetch articles from tRPC
+  const { data: articles, isLoading } = trpc.public.articles.list.useQuery({ limit: 20 });
 
-  const filteredArticles = articles
-    .filter((article) => {
-      const matchesSearch =
-        article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        article.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === "All" || article.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Extract unique categories
+  const categories = useMemo(() => {
+    if (!articles) return ["All"];
+    const unique = Array.from(new Set(articles.map((a: any) => a.category || "Uncategorized")));
+    return ["All", ...unique];
+  }, [articles]);
+
+  // Filter and sort articles
+  const filteredArticles = useMemo(() => {
+    if (!articles) return [];
+
+    return articles
+      .filter((article: any) => {
+        const matchesSearch =
+          article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          article.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = selectedCategory === "All" || (article.category || "Uncategorized") === selectedCategory;
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [articles, searchTerm, selectedCategory]);
+
+  // Calculate read time (rough estimate: 200 words per minute)
+  const getReadTime = (content: string) => {
+    const wordCount = content.split(/\s+/).length;
+    return Math.max(1, Math.ceil(wordCount / 200));
+  };
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-indigo-900/20 to-slate-900">
+        <div className="max-w-6xl mx-auto px-4 py-16 sm:py-24">
+          <div className="text-center mb-16">
+            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">AI Viral Blog</h1>
+            <p className="text-xl text-gray-400">Tips, trends, and insights about AI-powered content creation</p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="bg-slate-800 border-slate-700 animate-pulse">
+                <div className="h-40 bg-slate-700" />
+                <CardHeader>
+                  <div className="h-6 bg-slate-700 rounded mb-2" />
+                  <div className="h-4 bg-slate-700 rounded" />
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-indigo-900/20 to-slate-900">
@@ -157,7 +114,7 @@ export default function Blog() {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="h-64 md:h-auto">
                 <img
-                  src={filteredArticles[0]?.image || ""}
+                  src={filteredArticles[0]?.cover_image || "https://via.placeholder.com/600x400?text=Article"}
                   alt={filteredArticles[0]?.title || ""}
                   className="w-full h-full object-cover"
                 />
@@ -165,23 +122,21 @@ export default function Blog() {
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-medium">
-                    {filteredArticles[0]?.category}
+                    Featured
                   </span>
-                  <span className="text-xs text-gray-400">Featured</span>
+                  {filteredArticles[0]?.is_published && (
+                    <span className="text-xs text-green-400">Published</span>
+                  )}
                 </div>
                 <h2 className="text-2xl font-bold text-white mb-3">{filteredArticles[0]?.title}</h2>
                 <p className="text-gray-400 mb-4">{filteredArticles[0]?.excerpt}</p>
 
                 <div className="flex items-center gap-4 text-sm text-gray-400 mb-6">
                   <div className="flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    {filteredArticles[0]?.author}
-                  </div>
-                  <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    {filteredArticles[0]?.date && new Date(filteredArticles[0].date).toLocaleDateString()}
+                    {filteredArticles[0]?.createdAt && new Date(filteredArticles[0].createdAt).toLocaleDateString()}
                   </div>
-                  <span>{filteredArticles[0]?.readTime} min read</span>
+                  <span>{getReadTime(filteredArticles[0]?.content || "")} min read</span>
                 </div>
 
                 <Button
@@ -198,15 +153,15 @@ export default function Blog() {
 
         {/* Articles Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {(filteredArticles.length > 1 ? filteredArticles.slice(1) : filteredArticles).map((article) => (
+          {(filteredArticles.length > 1 ? filteredArticles.slice(1) : filteredArticles).map((article: any) => (
             <Card
-              key={article.id}
+              key={article.slug}
               className="bg-slate-800 border-slate-700 overflow-hidden hover:border-indigo-500/50 transition-colors cursor-pointer"
               onClick={() => setLocation(`/blog/${article.slug}`)}
             >
               <div className="h-40 overflow-hidden">
                 <img
-                  src={article.image}
+                  src={article.cover_image || "https://via.placeholder.com/600x400?text=Article"}
                   alt={article.title}
                   className="w-full h-full object-cover hover:scale-110 transition-transform"
                 />
@@ -215,9 +170,9 @@ export default function Blog() {
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
                   <span className="px-2 py-1 rounded text-xs font-medium bg-indigo-500/20 text-indigo-400">
-                    {article.category}
+                    {article.is_published ? "Published" : "Draft"}
                   </span>
-                  <span className="text-xs text-gray-400">{article.readTime} min</span>
+                  <span className="text-xs text-gray-400">{getReadTime(article.content)} min</span>
                 </div>
                 <CardTitle className="text-white text-lg line-clamp-2">{article.title}</CardTitle>
               </CardHeader>
@@ -226,14 +181,15 @@ export default function Blog() {
                 <p className="text-gray-400 text-sm line-clamp-2">{article.excerpt}</p>
 
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{article.author}</span>
-                  <span>{new Date(article.date).toLocaleDateString()}</span>
+                  <span>{article.slug}</span>
+                  <span>{new Date(article.createdAt).toLocaleDateString()}</span>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
+        {/* Empty state */}
         {filteredArticles.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-400 text-lg">No articles found matching your search.</p>

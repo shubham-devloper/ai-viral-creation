@@ -30,6 +30,7 @@ import ContentModeration from "./pages/ContentModeration";
 import BatchGeneration from "./pages/BatchGeneration";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import RouteDocumentation from "./pages/RouteDocumentation";
+import AdminArticles from "./pages/AdminArticles";
 
 function Router() {
   return (
@@ -55,6 +56,7 @@ function Router() {
       <Route path={"/admin/generations"} component={() => <ProtectedRoute component={AdminGenerations} isAdmin />} />
       <Route path={"/admin/settings"} component={() => <ProtectedRoute component={AdminSettings} isAdmin />} />
       <Route path={"/admin/routes"} component={() => <ProtectedRoute component={RouteDocumentation} isAdmin />} />
+      <Route path={"/admin/articles"} component={() => <ProtectedRoute component={AdminArticles} isAdmin />} />
       <Route path={"/pricing"} component={Pricing} />
       <Route path={"/affiliate"} component={Affiliate} />
       <Route path={"/blog"} component={Blog} />

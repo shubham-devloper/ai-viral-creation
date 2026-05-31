@@ -351,3 +351,13 @@
 - [x] Add performance metrics tRPC queries
 - [x] Update RouteDocumentation UI with metrics charts
 - [x] Verify all tests pass and deploy (284 tests passing, zero TypeScript errors)
+
+
+## Admin Articles Editor with TipTap
+- [x] Install TipTap dependencies
+- [x] Add deleteArticle and update getPublishedArticles in db.ts
+- [x] Add articles router with list, create, delete endpoints
+- [x] Create AdminArticles component with list and editor views
+- [x] Update Blog component to use tRPC queries
+- [x] Add /admin/articles route and navigation
+- [x] Verify all tests pass and deploy (284 tests passing, zero TypeScript errors)

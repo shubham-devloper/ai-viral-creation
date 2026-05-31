@@ -286,15 +286,19 @@ export async function recordAffiliateReferral(affiliateId: number, referredUserI
 }
 
 // Articles functions
-export async function getPublishedArticles(limit = 10) {
+export async function getPublishedArticles(limit = 10, showAll = false) {
   const db = await getDb();
   if (!db) return [];
 
-  return db.select()
+  const query = db.select()
     .from(articles)
-    .where(eq(articles.is_published, true))
     .orderBy(desc(articles.createdAt))
     .limit(limit);
+
+  if (!showAll) {
+    return query.where(eq(articles.is_published, true));
+  }
+  return query;
 }
 
 export async function getArticleBySlug(slug: string) {
@@ -326,6 +330,19 @@ export async function createOrUpdateArticle(data: {
   } else {
     const result = await db.insert(articles).values(data);
     return result;
+  }
+}
+
+export async function deleteArticle(slug: string) {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    await db.delete(articles).where(eq(articles.slug, slug));
+    return true;
+  } catch (error) {
+    console.warn("[Database] Failed to delete article:", error);
+    return false;
   }
 }
 
